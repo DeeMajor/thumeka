@@ -1,20 +1,26 @@
-// Phusion Passenger entry point for Plesk's Node.js extension.
+// iisnode (Plesk Windows) / Phusion Passenger (Plesk Linux) entry point.
 //
-// Plesk's Node.js panel expects a single startup file at the application
-// root. This file boots Next.js programmatically — equivalent to running
-// `next start` but inside a Node process that Passenger can manage.
+// Uses the `.cjs` extension so this file is treated as CommonJS even though
+// `package.json` declares `"type": "module"`. Most Node hosting runtimes
+// (including iisnode) load the startup file via require() — that mandates
+// CommonJS semantics for this file.
 //
-// `PORT` is set by Passenger at runtime. `HOSTNAME` defaults to 0.0.0.0
-// so the process is reachable from Passenger's worker pool.
+// `PORT`:
+// - iisnode passes a named pipe string (e.g. `\\.\pipe\xxx`).
+// - Passenger / local dev pass a TCP port number.
+// `listen()` accepts both; we just hand the raw value through.
 
 const next = require("next");
 const http = require("http");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
-const port = parseInt(process.env.PORT, 10) || 3000;
+const port = process.env.PORT || 3000;
+// next() wants a number for its own logging; pass undefined when iisnode
+// hands us a pipe so Next doesn't try to interpret it.
+const numericPort = Number.isFinite(Number(port)) ? Number(port) : undefined;
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname, port: numericPort });
 const handle = app.getRequestHandler();
 
 app
@@ -23,7 +29,7 @@ app
     http
       .createServer((req, res) => handle(req, res))
       .listen(port, () => {
-        console.log(`> Thumeka ready on http://${hostname}:${port}`);
+        console.log(`> Thumeka ready (listening on ${port})`);
       });
   })
   .catch((err) => {
