@@ -27,15 +27,15 @@ export const metadata: Metadata = {
     "Durban-only marketplace for products, services, errands, and deliveries.",
   icons: {
     icon: [
-      { url: "/thumeka-icon.png", type: "image/png" }
+      { url: "/thumeka.png", type: "image/png" }
     ],
-    apple: "/thumeka-icon.png"
+    apple: "/thumeka.png"
   },
   openGraph: {
     title: "Thumeka",
     description:
       "Durban-only marketplace for products, services, errands, and deliveries.",
-    images: ["/thumeka-logo.png"]
+    images: ["/thumeka.png"]
   }
 };
 
@@ -63,7 +63,7 @@ export default async function RootLayout({
                 <img
                   alt={`${APP_NAME} logo`}
                   className="h-full w-full object-contain"
-                  src="/thumeka-icon.png"
+                  src="/thumeka.png"
                 />
               </span>
               <span className="text-brand-gradient">{APP_NAME}</span>
@@ -157,7 +157,7 @@ export default async function RootLayout({
                   <img
                     alt={`${APP_NAME} logo`}
                     className="h-full w-full object-contain"
-                    src="/thumeka-icon.png"
+                    src="/thumeka.png"
                   />
                 </span>
                 <span>{APP_NAME}</span>
