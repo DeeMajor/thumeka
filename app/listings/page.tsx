@@ -163,7 +163,7 @@ export default async function ListingsPage() {
           </div>
         ) : (
           <EmptyState
-            body="Approved provider listings will appear here after Supabase is connected and providers are approved."
+            body="We're onboarding our first Durban sellers right now. Check back soon — or sign up as a provider to list yours."
             title="No live listings yet"
           />
         )}
