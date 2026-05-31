@@ -3,11 +3,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Standalone build emits a self-contained `.next/standalone/server.js`
-  // bundle with only the runtime files it needs. That's what Plesk's Node.js
-  // (Phusion Passenger) extension runs in production — small footprint, fast
-  // boot, no `node_modules` round trip on deploy.
-  output: "standalone",
+  // Plesk's Phusion Passenger expects a server.js at the application root
+  // that calls Next.js programmatically. See ./server.js — using the standard
+  // build output keeps node_modules on the server (Plesk auto-runs npm ci)
+  // and avoids the file-shuffling dance that a standalone build requires.
   images: {
     remotePatterns: [
       {

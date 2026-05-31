@@ -59,32 +59,25 @@ builds Next.js and emits the standalone server.
 2. Paste this exactly:
 
 ```bash
-# Stop the Node.js app so it doesn't fight us during build.
-plesk ext nodejs --restart-app --domain $PLESK_DOMAIN || true
+# Install dependencies for the production build.
+npm ci
 
-# Install + build.
-~/.nvm/versions/node/v20.*/bin/npm ci
-~/.nvm/versions/node/v20.*/bin/npm run build
+# Build Next.js (compiles app router + middleware + edge bundles).
+npm run build
 
-# Standalone build needs static + public copied next to server.js.
-cp -r .next/static .next/standalone/.next/static
-cp -r public .next/standalone/public
-
-# Move the standalone bundle to the place Plesk expects the app to run from.
-# (Plesk's Application Root is /httpdocs and we keep server.js at the root.)
-cp -r .next/standalone/* .
-cp -r .next/standalone/.next ./.next-runtime
-
-# Restart Passenger so it picks up the new code.
+# Touch the restart file so Passenger picks up the new code.
 mkdir -p tmp
 touch tmp/restart.txt
 ```
 
 3. Save.
 
-> If Plesk doesn't expose `plesk ext nodejs` from deploy actions (it varies),
-> the `touch tmp/restart.txt` line alone is enough — Phusion Passenger
-> watches that file and restarts on touch.
+That's the whole script. Three commands. The `npm ci` is the slowest step
+(~1–2 minutes). `next build` takes ~1 minute. Restart is instant.
+
+> If `npm ci` complains about an outdated lockfile, change it to
+> `npm install`. The standard pattern uses `ci` because it's faster and
+> deterministic.
 
 ## Phase 5 — Set environment variables
 
