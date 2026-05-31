@@ -23,7 +23,8 @@
     "test:e2e:runbook:headed": "playwright test tests/e2e/runbook --headed --workers=1",
     "test:all": "npm run lint && npm run test && npm run test:db && npm run test:e2e && npm run build",
     "seed:dev": "tsx scripts/seed-dev.ts",
-    "reset:dev": "tsx scripts/reset-dev.ts"
+    "reset:dev": "tsx scripts/reset-dev.ts",
+    "find-node": "node -e \"console.log('NODE PATH:', process.execPath); console.log('NODE VERSION:', process.version)\""
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "~2.0.2",
