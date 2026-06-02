@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogIn } from "lucide-react";
 
 import { signInAction } from "@/app/auth/actions";
+import { PasswordInput } from "@/components/password-input";
 
 export const metadata: Metadata = {
   title: "Sign in"
@@ -59,13 +60,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </label>
           <label className="block space-y-1">
             <span className="label">Password</span>
-            <input
+            <PasswordInput
               autoComplete="current-password"
-              className="input"
               data-testid="sign-in-password-input"
               name="password"
               required
-              type="password"
             />
           </label>
           <button className="btn-primary w-full" data-testid="sign-in-submit-button" type="submit">

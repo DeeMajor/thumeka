@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 
 import { registerAction } from "@/app/auth/actions";
+import { PasswordInput } from "@/components/password-input";
 
 export const metadata: Metadata = {
   title: "Register"
@@ -70,14 +71,12 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           </label>
           <label className="block space-y-1">
             <span className="label">Password</span>
-            <input
+            <PasswordInput
               autoComplete="new-password"
-              className="input"
               data-testid="register-password-input"
               minLength={8}
               name="password"
               required
-              type="password"
             />
           </label>
           <fieldset className="space-y-2">
