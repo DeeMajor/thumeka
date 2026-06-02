@@ -299,7 +299,7 @@ export default async function ProviderDashboardPage({
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{listing.title}</p>
                         <p className="mt-1 text-body-sm text-black/60">
-                          {listing.suburb ?? "Durban"} · {formatMoney(listing.price)}
+                          {listing.suburb ?? "—"} · {formatMoney(listing.price)}
                         </p>
                       </div>
                     </div>

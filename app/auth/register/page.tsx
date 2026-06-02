@@ -26,7 +26,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           </div>
           <h1 className="text-display-md text-ink">Create account</h1>
           <p className="mt-2 text-sm leading-6 text-black/60">
-            Choose the role you need for Durban orders, listings, or deliveries.
+            Choose the role you need for orders, listings, or deliveries.
           </p>
         </div>
 

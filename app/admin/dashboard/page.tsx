@@ -547,7 +547,7 @@ export default async function AdminDashboardPage({
                           {provider.business_name ?? "Provider application"}
                         </p>
                         <p className="mt-1 text-sm text-black/60">
-                          {provider.suburb ?? "Durban"} · {provider.provider_type ?? "individual"}
+                          {provider.suburb ?? "—"} · {provider.provider_type ?? "individual"}
                         </p>
                       </div>
                       <StatusPill status={provider.status} />

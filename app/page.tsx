@@ -2,246 +2,360 @@ import Link from "next/link";
 import {
   ArrowRight,
   MapPin,
-  ShieldCheck,
-  ShoppingBag,
-  ShoppingBasket,
-  Shirt,
-  Sparkles,
-  SprayCan,
-  Store,
-  Truck,
-  UtensilsCrossed,
-  Wrench
+  Search,
+  ShoppingBag
 } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import { ListingImage } from "@/components/listing-image";
 import { getCurrentProfile } from "@/lib/auth";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, SEEDED_CATEGORIES } from "@/lib/constants";
+import type { CategoryRow, ListingRow } from "@/lib/database.types";
+import { formatMoney, titleCase } from "@/lib/format";
 import { roleHomePath } from "@/lib/routes";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORIES: { name: string; icon: typeof MapPin }[] = [
-  { name: "Food", icon: UtensilsCrossed },
-  { name: "Groceries", icon: ShoppingBasket },
-  { name: "Clothing", icon: Shirt },
-  { name: "Beauty", icon: Sparkles },
-  { name: "Home services", icon: Wrench },
-  { name: "Cleaning", icon: SprayCan }
-];
+type HomePageProps = {
+  searchParams: Promise<{ category?: string; q?: string }>;
+};
 
-const WHY_THUMEKA = [
-  {
-    icon: MapPin,
-    title: "Built for Durban",
-    body: "Every seller and driver is local. Listings stay in your suburb, not someone else's."
-  },
-  {
-    icon: ShieldCheck,
-    title: "Pay only when accepted",
-    body: "EFT instructions are unlocked after the seller accepts. No payment held against air."
-  },
-  {
-    icon: Truck,
-    title: "Approved drivers, real delivery",
-    body: "Distance and fee calculated up front. You see the total before you commit."
+async function getMarketplaceData(categoryName: string | undefined) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: categories } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    const categoryList = (categories ?? []) as CategoryRow[];
+    const matchedCategory = categoryName
+      ? categoryList.find(
+          (category) =>
+            category.name.toLowerCase() === categoryName.toLowerCase()
+        )
+      : undefined;
+
+    let listingsQuery = supabase
+      .from("listings")
+      .select("*")
+      .eq("is_active", true)
+      .eq("admin_disabled", false)
+      .order("created_at", { ascending: false })
+      .limit(24);
+
+    if (matchedCategory) {
+      listingsQuery = listingsQuery.eq("category_id", matchedCategory.id);
+    }
+
+    const { data: listings } = await listingsQuery;
+
+    return {
+      listings: (listings ?? []) as ListingRow[],
+      categories: categoryList,
+      matchedCategory,
+      configured: true
+    };
+  } catch {
+    return {
+      listings: [] as ListingRow[],
+      categories: [] as CategoryRow[],
+      matchedCategory: undefined,
+      configured: false
+    };
   }
-];
+}
 
-const HOW_BUY = [
-  "Browse approved Durban listings",
-  "Get a delivery quote at checkout",
-  "Pay by EFT after the seller accepts"
-];
-const HOW_SELL = [
-  "Apply with your business details",
-  "List products, services, or errands",
-  "Accept orders — earnings go to your bank"
-];
-const HOW_DRIVE = [
-  "Register with vehicle + payout details",
-  "Go online when you're available",
-  "Pick up, deliver, get paid weekly"
-];
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams;
+  const activeCategory = params.category;
+  const [{ listings, categories, matchedCategory, configured }, profile] =
+    await Promise.all([
+      getMarketplaceData(activeCategory),
+      getCurrentProfile().catch(() => null)
+    ]);
 
-export default async function HomePage() {
-  const profile = await getCurrentProfile().catch(() => null);
+  const categoryNames = categories.length
+    ? categories.map((category) => category.name)
+    : SEEDED_CATEGORIES;
+  const categoriesById = new Map(
+    categories.map((category) => [category.id, category])
+  );
 
   return (
     <div className="bg-mist" data-testid="page-home">
       {/* Hero */}
       <section className="section-band">
-        <div className="page-shell gap-10 py-14 sm:py-20">
-          <div className="flex flex-col items-start gap-6">
+        <div className="page-shell gap-6 py-10 sm:py-14">
+          <div className="flex flex-col items-start gap-5">
             <span className="inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-caption font-semibold uppercase tracking-widest text-leaf">
               <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
-              Durban marketplace
+              South Africa&apos;s safest and most empowering marketplace
             </span>
             <h1 className="max-w-3xl text-display-lg sm:text-display-xl">
-              Durban,{" "}
-              <span className="text-brand-gradient">delivered.</span>
+              Anything <span className="text-brand-gradient">delivered</span>{" "}
+              within an average of 40 minutes.
             </h1>
             <p className="max-w-2xl text-body text-black/65 sm:text-base sm:leading-7">
-              A marketplace for products, services, and errands &mdash; paid by EFT,
-              delivered by approved drivers. From food to fixes, find what
-              Durban&apos;s makers and pros do best.
+              A marketplace for products, services, and errands &mdash; paid by
+              EFT, delivered by approved drivers. Find what makers and pros do
+              best.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-cta-group">
-              <Link
-                className="btn-primary px-6"
-                data-testid="home-browse-link"
-                href="/listings"
-              >
-                Browse marketplace
-                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </Link>
-              {profile ? (
-                <Link
-                  className="btn-secondary px-6"
-                  data-testid="home-dashboard-link"
-                  href={roleHomePath(profile.role)}
-                >
-                  Go to dashboard
-                </Link>
-              ) : (
-                <Link
-                  className="btn-secondary px-6"
-                  data-testid="home-sell-link"
-                  href="/auth/register"
-                >
-                  Become a seller
-                </Link>
-              )}
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Why Thumeka */}
-      <section className="page-shell py-12">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {WHY_THUMEKA.map(({ icon: Icon, title, body }) => (
-            <div className="panel" key={title}>
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-mint text-leaf">
-                <Icon className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <h3 className="mt-4 text-h3 text-ink">{title}</h3>
-              <p className="mt-2 text-body-sm text-black/60">{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Categories preview */}
-      <section className="page-shell py-12">
-        <div className="dash-section-label">
-          <span className="label-text">Browse by category</span>
-          <span className="label-rule" />
-          <Link
-            className="text-caption font-semibold uppercase tracking-widest text-leaf hover:text-ink"
-            data-testid="home-categories-all-link"
-            href="/listings"
-          >
-            See all
-          </Link>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CATEGORIES.map(({ name, icon: Icon }) => (
-            <Link
-              className="group flex items-center gap-4 rounded-lg border border-black/10 bg-white p-4 transition hover:border-leaf hover:shadow-soft"
-              data-testid="home-category-link"
-              href={`/listings?category=${encodeURIComponent(name)}`}
-              key={name}
+      {/* Browse band: sidebar + grid */}
+      <section className="page-shell py-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2
+              className="text-h1 text-ink"
+              data-testid="home-browse-heading"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-mint text-leaf">
-                <Icon className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div className="flex-1">
-                <p className="text-h3 text-ink">{name}</p>
-                <p className="text-body-sm text-black/55">Explore listings</p>
-              </div>
-              <ArrowRight
-                className="h-4 w-4 text-black/30 transition group-hover:translate-x-0.5 group-hover:text-leaf"
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="section-band">
-        <div className="page-shell py-14">
-          <div className="max-w-2xl">
-            <h2 className="text-display-md text-ink">How {APP_NAME} works</h2>
-            <p className="mt-3 text-body text-black/60">
-              Three sides, one marketplace. Pick yours.
+              Browse approved listings
+            </h2>
+            <p className="mt-1 text-body-sm text-black/55">
+              {listings.length}{" "}
+              {listings.length === 1 ? "listing" : "listings"}
+              {matchedCategory ? ` in ${matchedCategory.name}` : ""}
             </p>
           </div>
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            <HowCard icon={ShoppingBag} title="For buyers" steps={HOW_BUY} cta="Browse listings" href="/listings" testid="home-how-buy" />
-            <HowCard icon={Store} title="For sellers" steps={HOW_SELL} cta="Become a seller" href="/auth/register" testid="home-how-sell" />
-            <HowCard icon={Truck} title="For drivers" steps={HOW_DRIVE} cta="Drive for us" href="/auth/register" testid="home-how-drive" />
+          {profile ? (
+            <Link
+              className="btn-primary"
+              data-testid="home-dashboard-link"
+              href={roleHomePath(profile.role)}
+            >
+              My dashboard
+            </Link>
+          ) : (
+            <Link
+              className="btn-primary"
+              data-testid="home-create-account-link"
+              href="/auth/register"
+            >
+              Create account
+            </Link>
+          )}
+        </div>
+
+        {!configured ? (
+          <div className="mt-4 rounded-md border border-maize/60 bg-maize/20 p-3 text-sm text-ink">
+            Live listings are temporarily unavailable. Please check back
+            shortly.
+          </div>
+        ) : null}
+
+        {/* Mobile-only horizontal category chips */}
+        <div
+          aria-label="Categories"
+          className="mt-5 flex gap-2 overflow-x-auto pb-1 sm:hidden"
+          data-testid="home-category-chip-list"
+        >
+          <Link
+            className={
+              activeCategory
+                ? "whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black/70"
+                : "whitespace-nowrap rounded-md border border-leaf bg-mint px-3 py-2 text-sm font-semibold text-leaf"
+            }
+            data-testid="home-category-chip-all"
+            href="/"
+          >
+            All
+          </Link>
+          {categoryNames.map((category) => {
+            const isActive =
+              activeCategory?.toLowerCase() === category.toLowerCase();
+            return (
+              <Link
+                className={
+                  isActive
+                    ? "whitespace-nowrap rounded-md border border-leaf bg-mint px-3 py-2 text-sm font-semibold text-leaf"
+                    : "whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black/70"
+                }
+                data-testid="home-category-chip"
+                href={`/?category=${encodeURIComponent(category)}`}
+                key={category}
+              >
+                {category}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:flex-row sm:items-start">
+          {/* Desktop sidebar */}
+          <aside
+            aria-label="Categories"
+            className="hidden w-56 shrink-0 sm:block"
+            data-testid="home-category-sidebar"
+          >
+            <div className="sticky top-24 rounded-lg border border-black/10 bg-white p-3">
+              <p className="px-2 pb-2 text-caption font-semibold uppercase tracking-widest text-black/40">
+                Refine by Category
+              </p>
+              <ul className="space-y-0.5 text-sm">
+                <li>
+                  <Link
+                    className={
+                      activeCategory
+                        ? "block rounded-md px-2 py-2 text-ink hover:bg-mist"
+                        : "block rounded-md bg-mint px-2 py-2 font-semibold text-leaf"
+                    }
+                    data-testid="home-category-link-all"
+                    href="/"
+                  >
+                    All
+                  </Link>
+                </li>
+                {categoryNames.map((category) => {
+                  const isActive =
+                    activeCategory?.toLowerCase() === category.toLowerCase();
+                  return (
+                    <li key={category}>
+                      <Link
+                        className={
+                          isActive
+                            ? "block rounded-md bg-mint px-2 py-2 font-semibold text-leaf"
+                            : "block rounded-md px-2 py-2 text-ink hover:bg-mist"
+                        }
+                        data-testid="home-category-link"
+                        href={`/?category=${encodeURIComponent(category)}`}
+                      >
+                        {category}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </aside>
+
+          {/* Right pane: search + grid */}
+          <div className="min-w-0 flex-1">
+            <form
+              className="flex gap-2 rounded-lg border border-black/10 bg-white p-2"
+              data-testid="home-search-form"
+            >
+              <label className="flex min-w-0 flex-1 items-center gap-2 px-2">
+                <Search
+                  aria-hidden="true"
+                  className="h-4 w-4 flex-none text-black/45"
+                />
+                <span className="sr-only">Search listings</span>
+                <input
+                  className="min-h-10 w-full bg-transparent text-sm outline-none"
+                  data-testid="home-search-input"
+                  defaultValue={params.q ?? ""}
+                  name="q"
+                  placeholder="Search food, repairs, errands"
+                />
+              </label>
+              {activeCategory ? (
+                <input
+                  name="category"
+                  type="hidden"
+                  value={activeCategory}
+                />
+              ) : null}
+              <button
+                className="btn-secondary px-3"
+                data-testid="home-search-button"
+                type="submit"
+              >
+                Search
+              </button>
+            </form>
+
+            {listings.length ? (
+              <div className="mobile-grid mt-5">
+                {listings.map((listing) => (
+                  <Link
+                    className="rounded-lg border border-black/10 bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf"
+                    data-testid="listing-card"
+                    href={`/listings/${listing.id}`}
+                    key={listing.id}
+                  >
+                    <ListingImage
+                      alt={listing.title}
+                      className="relative mb-4 aspect-[4/3] overflow-hidden rounded-md"
+                      storagePath={listing.image_url}
+                    />
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="rounded-md bg-mint px-2 py-1 text-xs font-semibold text-leaf">
+                        {titleCase(listing.listing_type)}
+                      </span>
+                      {categoriesById.get(listing.category_id) ? (
+                        <span className="rounded-md bg-black/5 px-2 py-1 text-xs font-semibold text-black/60">
+                          {categoriesById.get(listing.category_id)?.name}
+                        </span>
+                      ) : null}
+                      <span className="text-sm font-semibold">
+                        {formatMoney(listing.price)}
+                      </span>
+                    </div>
+                    <h3 className="line-clamp-2 text-base font-semibold">
+                      {listing.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-black/60">
+                      {listing.description}
+                    </p>
+                    <p className="mt-3 flex items-center gap-1 text-xs font-medium text-black/55">
+                      <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                      {listing.suburb ?? "—"}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5">
+                <EmptyState
+                  body={
+                    matchedCategory
+                      ? `No live listings in ${matchedCategory.name} yet. Try another category, or check back soon.`
+                      : "We're onboarding our first sellers right now. Check back soon — or sign up as a provider to list yours."
+                  }
+                  title="No live listings yet"
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Final CTA band */}
-      <section className="page-shell py-14">
+      {/* Final CTA: Run your business */}
+      <section className="page-shell py-12">
         <div className="panel flex flex-col gap-6 p-8 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-xl">
-            <h2 className="text-h1 text-ink">Run your business with {APP_NAME}.</h2>
+            <h2 className="text-h1 text-ink">
+              Run your business with {APP_NAME}.
+            </h2>
             <p className="mt-2 text-body text-black/60">
-              Reach Durban buyers, ship through approved drivers, and get paid weekly.
+              Reach buyers, ship through approved drivers, and get paid weekly.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link className="btn-primary px-6" data-testid="home-final-sell-link" href="/auth/register">
+            <Link
+              className="btn-primary px-6"
+              data-testid="home-final-sell-link"
+              href="/auth/register"
+            >
               Sell on {APP_NAME}
+              <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
             </Link>
-            <Link className="btn-secondary px-6" data-testid="home-final-drive-link" href="/auth/register">
+            <Link
+              className="btn-secondary px-6"
+              data-testid="home-final-drive-link"
+              href="/auth/register"
+            >
               Drive for {APP_NAME}
             </Link>
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function HowCard({
-  icon: Icon,
-  title,
-  steps,
-  cta,
-  href,
-  testid
-}: {
-  icon: typeof MapPin;
-  title: string;
-  steps: string[];
-  cta: string;
-  href: string;
-  testid: string;
-}) {
-  return (
-    <div className="panel flex flex-col" data-testid={testid}>
-      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-mint text-leaf">
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </div>
-      <h3 className="mt-4 text-h2 text-ink">{title}</h3>
-      <ol className="mt-4 space-y-3 text-body-sm text-black/65">
-        {steps.map((step, index) => (
-          <li className="flex items-start gap-3" key={step}>
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-mint text-caption font-semibold text-leaf">
-              {index + 1}
-            </span>
-            <span>{step}</span>
-          </li>
-        ))}
-      </ol>
-      <Link className="btn-secondary mt-6 w-full" href={href}>
-        {cta}
-      </Link>
     </div>
   );
 }

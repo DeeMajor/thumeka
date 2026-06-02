@@ -357,7 +357,7 @@ export default async function DriverDashboardPage({
                       <p className="text-sm text-black/50">Order {order.id.slice(0, 8)}</p>
                       <p className="mt-1 font-semibold">{order.buyer_name}</p>
                       <p className="mt-1 text-sm text-black/60">
-                        {order.delivery_address ?? order.suburb ?? "Durban"}
+                        {order.delivery_address ?? order.suburb ?? "—"}
                       </p>
                     </div>
                     <StatusPill status={order.status} />

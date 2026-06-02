@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s | Thumeka"
   },
   description:
-    "Durban-only marketplace for products, services, errands, and deliveries.",
+    "South Africa's safest and most empowering marketplace — products, services, errands, and deliveries.",
   icons: {
     icon: [
       { url: "/thumeka.png", type: "image/png" }
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Thumeka",
     description:
-      "Durban-only marketplace for products, services, errands, and deliveries.",
+      "South Africa's safest and most empowering marketplace — products, services, errands, and deliveries.",
     images: ["/thumeka.png"]
   }
 };
@@ -69,7 +69,6 @@ export default async function RootLayout({
                   src="/thumeka.png"
                 />
               </span>
-              <span className="text-brand-gradient">{APP_NAME}</span>
             </Link>
             <nav className="hidden items-center gap-2 sm:flex" data-testid="desktop-nav">
               <Link className="btn-secondary" href="/listings" data-testid="nav-listings-link">
@@ -166,7 +165,7 @@ export default async function RootLayout({
                 <span>{APP_NAME}</span>
               </div>
               <p className="mt-3 text-body-sm text-black/55">
-                Durban&apos;s marketplace for products, services, and errands.
+                A national marketplace for products, services, and errands.
               </p>
             </div>
             <div>
@@ -221,7 +220,7 @@ export default async function RootLayout({
           <div className="border-t border-black/10">
             <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4 text-caption text-black/45 sm:px-6 lg:px-8">
               <span>
-                &copy; {new Date().getFullYear()} {APP_NAME}. Built for Durban.
+                &copy; {new Date().getFullYear()} {APP_NAME}. Built in South Africa.
               </span>
               <span>en-ZA</span>
             </div>

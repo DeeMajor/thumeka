@@ -85,7 +85,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <p className="mt-4 text-sm leading-6 text-black/65">{listing.description}</p>
           <p className="mt-4 flex items-center gap-1 text-sm font-medium text-black/55">
             <MapPin className="h-4 w-4" aria-hidden="true" />
-            {listing.suburb ?? "Durban"}
+            {listing.suburb ?? "—"}
           </p>
           {listing.availability_notes ? (
             <p className="mt-4 rounded-md bg-mist p-3 text-sm text-black/65">

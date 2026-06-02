@@ -34,7 +34,7 @@ export default async function ProviderApplyPage({ searchParams }: ProviderApplyP
           </div>
           <h1 className="text-display-md text-ink">Provider application</h1>
           <p className="mt-2 text-sm leading-6 text-black/60">
-            Submit your Durban provider details for admin review.
+            Submit your provider details for admin review.
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export default async function ProviderApplyPage({ searchParams }: ProviderApplyP
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1">
-              <span className="label">Durban suburb/area</span>
+              <span className="label">Suburb / area</span>
               <input className="input" data-testid="provider-suburb-input" name="suburb" required />
             </label>
             <label className="space-y-1">

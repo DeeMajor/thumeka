@@ -119,7 +119,7 @@ export function ProviderOrdersBoard({
                           </p>
                           <p className="mt-1 font-semibold">{order.buyer_name}</p>
                           <p className="mt-1 text-sm text-black/60">
-                            {order.suburb ?? "Durban"} · {formatMoney(order.buyer_total)}
+                            {order.suburb ?? "—"} · {formatMoney(order.buyer_total)}
                           </p>
                         </div>
                         <StatusPill status={order.status} />
@@ -155,7 +155,7 @@ export function ProviderOrdersBoard({
                       </p>
                       <p className="mt-1 font-semibold">{order.buyer_name}</p>
                       <p className="mt-1 text-sm text-black/60">
-                        {order.suburb ?? "Durban"} · {formatMoney(order.buyer_total)}
+                        {order.suburb ?? "—"} · {formatMoney(order.buyer_total)}
                       </p>
                     </div>
                     <StatusPill status={order.status} />

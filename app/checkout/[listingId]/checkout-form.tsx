@@ -133,7 +133,7 @@ export function CheckoutForm({
         />
       </label>
       <label className="block space-y-1">
-        <span className="label">Durban suburb/area</span>
+        <span className="label">Suburb / area</span>
         <input
           className="input"
           data-testid="checkout-suburb-input"

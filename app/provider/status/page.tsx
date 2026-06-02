@@ -58,7 +58,7 @@ export default async function ProviderStatusPage({ searchParams }: ProviderStatu
                 <h2 className="text-lg font-semibold">
                   {provider.business_name ?? profile.full_name ?? "Provider"}
                 </h2>
-                <p className="mt-1 text-sm text-black/60">{provider.suburb ?? "Durban"}</p>
+                <p className="mt-1 text-sm text-black/60">{provider.suburb ?? "—"}</p>
               </div>
               <StatusPill status={provider.status} />
             </div>

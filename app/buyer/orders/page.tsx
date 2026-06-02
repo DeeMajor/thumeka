@@ -191,7 +191,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
 
                 {/* Details */}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-black/55">
-                  <span>{order.suburb ?? "Durban"}</span>
+                  <span>{order.suburb ?? "—"}</span>
                   <span aria-hidden="true">·</span>
                   <span>Payment: {order.payment_status.replaceAll("_", " ")}</span>
                 </div>
