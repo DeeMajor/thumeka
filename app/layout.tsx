@@ -48,7 +48,7 @@ export default async function RootLayout({
   return (
     <html lang="en-ZA" className={jakarta.variable} suppressHydrationWarning>
       <body
-        className="font-sans text-body text-ink antialiased"
+        className="flex min-h-screen flex-col font-sans text-body text-ink antialiased"
         suppressHydrationWarning
       >
         <header
@@ -175,7 +175,7 @@ export default async function RootLayout({
             </details>
           </div>
         </header>
-        <main className="pb-20 sm:pb-0" data-testid="app-main">
+        <main className="flex-1 pb-20 sm:pb-0" data-testid="app-main">
           {children}
         </main>
         {profile ? (
