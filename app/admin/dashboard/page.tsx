@@ -13,6 +13,9 @@ import {
   rejectProviderAction,
   updatePayoutReferencePrefixAction
 } from "@/app/admin/dashboard/actions";
+import { AdminPager } from "@/components/admin-pager";
+import { OrderAgeChip } from "@/components/order-age-chip";
+import { OrderContactBlock } from "@/components/order-contact-block";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { StatusPill } from "@/components/status-pill";
 import { requireRole } from "@/lib/auth";
@@ -30,6 +33,7 @@ import {
   type DriverPayoutOrder,
   type PaidPayoutItemLike
 } from "@/lib/payouts";
+import { pageCount, pageRange, readPageParam } from "@/lib/pagination";
 import {
   DOCUMENT_LABEL_BY_TYPE,
   DRIVER_DOCUMENT_SLOTS,
@@ -54,15 +58,18 @@ type AdminDashboardPageProps = {
   searchParams: Promise<{
     driver_assigned?: string;
     driver_approved?: string;
+    driver_page?: string;
     driver_payout_created?: string;
     driver_rejected?: string;
     eft_confirmed?: string;
     error?: string;
+    ops_page?: string;
     paid_page?: string;
     payout_created?: string;
     payout_paid?: string;
     prefix_updated?: string;
     provider_approved?: string;
+    provider_page?: string;
     provider_rejected?: string;
     tab?: string;
   }>;
@@ -87,16 +94,24 @@ export default async function AdminDashboardPage({
   await requireRole(["admin"]);
   const supabase = await createSupabaseServerClient();
 
+  // Paginated lists. Each follows the same shape: read page param → derive
+  // the inclusive range → ask Supabase for the matching rows + count.
+  const providerPage = readPageParam(params.provider_page);
+  const driverPage = readPageParam(params.driver_page);
+  const opsPage = readPageParam(params.ops_page);
+  const paidPayoutsPage = readPageParam(params.paid_page);
+  const [providerFrom, providerTo] = pageRange(providerPage);
+  const [driverFrom, driverTo] = pageRange(driverPage);
+  const [opsFrom, opsTo] = pageRange(opsPage);
+  const [paidFrom, paidTo] = pageRange(paidPayoutsPage);
+
   const [
-    { count: pendingProviders },
-    { count: pendingDrivers },
-    { count: openOrders },
     { count: transactions },
     { count: auditLogs },
     { data: settings },
-    { data: pendingProvidersData },
-    { data: pendingDriversData },
-    { data: operationalOrdersData },
+    { data: pendingProvidersData, count: pendingProvidersTotal },
+    { data: pendingDriversData, count: pendingDriversTotal },
+    { data: operationalOrdersData, count: opsOrdersTotal },
     { data: availableDriversData },
     { data: completedOrdersData },
     { data: payoutItemsData },
@@ -105,18 +120,6 @@ export default async function AdminDashboardPage({
     { data: driverPaidPayoutsData, count: paidPayoutsTotal },
     { data: driverProfilesForPayoutData }
   ] = await Promise.all([
-    supabase
-      .from("provider_profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending"),
-    supabase
-      .from("driver_profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("approval_status", "pending"),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .not("status", "in", "(completed,cancelled)"),
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true }),
@@ -130,22 +133,35 @@ export default async function AdminDashboardPage({
       .maybeSingle(),
     supabase
       .from("provider_profiles")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("status", "pending")
       .order("created_at", { ascending: true })
-      .limit(12),
+      .range(providerFrom, providerTo),
     supabase
       .from("driver_profiles")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("approval_status", "pending")
       .order("created_at", { ascending: true })
-      .limit(12),
+      .range(driverFrom, driverTo),
+    // Operational orders: FIFO (oldest first) so the worst-stale order sits
+    // at the top of the queue, with the buyer/provider/driver contact rows
+    // joined inline so the admin can phone any participant from the card.
     supabase
       .from("orders")
-      .select("*")
+      .select(
+        `*,
+         provider:provider_profiles!orders_provider_id_fkey (
+           business_name,
+           profile:profiles!provider_profiles_user_id_fkey ( full_name, phone )
+         ),
+         driver:driver_profiles!orders_driver_id_fkey (
+           profile:profiles!driver_profiles_user_id_fkey ( full_name, phone )
+         )`,
+        { count: "exact" }
+      )
       .not("status", "in", "(completed,cancelled)")
-      .order("created_at", { ascending: false })
-      .limit(12),
+      .order("created_at", { ascending: true })
+      .range(opsFrom, opsTo),
     supabase
       .from("driver_profiles")
       .select("*")
@@ -175,23 +191,27 @@ export default async function AdminDashboardPage({
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(50),
-    (() => {
-      const PAGE_SIZE = 10;
-      const rawPage = Number.parseInt(params.paid_page ?? "1", 10);
-      const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
-      const offset = (page - 1) * PAGE_SIZE;
-      return supabase
-        .from("payouts")
-        .select("*", { count: "exact" })
-        .eq("recipient_type", "driver")
-        .eq("status", "paid")
-        .order("paid_at", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
-    })(),
+    supabase
+      .from("payouts")
+      .select("*", { count: "exact" })
+      .eq("recipient_type", "driver")
+      .eq("status", "paid")
+      .order("paid_at", { ascending: false })
+      .range(paidFrom, paidTo),
     supabase
       .from("driver_profiles")
       .select("id, user_id, profiles:user_id ( id, full_name, email )")
   ]);
+
+  // The stat cards at the top of the page reuse the per-tab counts so we
+  // don't pay for a second round trip to Supabase for the same numbers.
+  const pendingProviders = pendingProvidersTotal ?? 0;
+  const pendingDrivers = pendingDriversTotal ?? 0;
+  const openOrders = opsOrdersTotal ?? 0;
+  const providerPageCount = pageCount(pendingProvidersTotal);
+  const driverPageCount = pageCount(pendingDriversTotal);
+  const opsPageCount = pageCount(opsOrdersTotal);
+  const paidPayoutsPageCount = pageCount(paidPayoutsTotal);
 
   // Pull every document attached to a currently-pending applicant so the
   // approval cards can render an inline list with View links + a missing-doc
@@ -240,7 +260,19 @@ export default async function AdminDashboardPage({
   const payoutRefPrefix = adminSettings?.payout_reference_prefix ?? "EFT-";
   const pendingProviderRows = (pendingProvidersData ?? []) as ProviderProfileRow[];
   const pendingDriverRows = (pendingDriversData ?? []) as DriverProfileRow[];
-  const operationalOrders = (operationalOrdersData ?? []) as OrderRow[];
+  // Operational orders carry inline provider/driver contact data (joined
+  // server-side above) so the OrderContactBlock can render phone links
+  // without an N+1 fetch.
+  type AdminOrderRow = OrderRow & {
+    provider: {
+      business_name: string | null;
+      profile: { full_name: string | null; phone: string | null } | null;
+    } | null;
+    driver: {
+      profile: { full_name: string | null; phone: string | null } | null;
+    } | null;
+  };
+  const operationalOrders = (operationalOrdersData ?? []) as unknown as AdminOrderRow[];
   const availableDrivers = (availableDriversData ?? []) as DriverProfileRow[];
   const payoutItems = (payoutItemsData ?? []) as PaidPayoutItemLike[];
   const providerPaidOrderIds = new Set(
@@ -289,14 +321,6 @@ export default async function AdminDashboardPage({
   const pendingDriverPayouts = (driverPendingPayoutsData ?? []) as PayoutRow[];
   const paidDriverPayouts = (driverPaidPayoutsData ?? []) as PayoutRow[];
   const driversOwedCount = driverPayables.length + pendingDriverPayouts.length;
-  const PAID_PAGE_SIZE = 10;
-  const rawPaidPage = Number.parseInt(params.paid_page ?? "1", 10);
-  const paidPage =
-    Number.isFinite(rawPaidPage) && rawPaidPage > 0 ? rawPaidPage : 1;
-  const paidTotalCount = paidPayoutsTotal ?? 0;
-  const paidPageCount = Math.max(1, Math.ceil(paidTotalCount / PAID_PAGE_SIZE));
-  const paidHasPrev = paidPage > 1;
-  const paidHasNext = paidPage < paidPageCount;
   const driverNameByUserId = (userId: string) => {
     const p = driverProfilesByUserId.get(userId);
     return p?.full_name ?? p?.email ?? "Driver";
@@ -561,7 +585,13 @@ export default async function AdminDashboardPage({
                           {provider.suburb ?? "—"} · {provider.provider_type ?? "individual"}
                         </p>
                       </div>
-                      <StatusPill status={provider.status} />
+                      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                        <OrderAgeChip
+                          createdAt={provider.created_at}
+                          testIdPrefix={`admin-provider-${provider.id.slice(0, 8)}`}
+                        />
+                        <StatusPill status={provider.status} />
+                      </div>
                     </div>
                     {(() => {
                       const docs = getApprovalDocs(provider.user_id, "provider");
@@ -655,6 +685,14 @@ export default async function AdminDashboardPage({
                 </div>
               )}
             </div>
+            <AdminPager
+              basePath="/admin/dashboard"
+              currentPage={providerPage}
+              pageCount={providerPageCount}
+              pageParam="provider_page"
+              preserveParams={{ tab: "approvals" }}
+              testIdPrefix="admin-provider-pager"
+            />
           </div>
 
           <div className="panel" data-testid="admin-driver-approvals-panel">
@@ -679,7 +717,13 @@ export default async function AdminDashboardPage({
                           {driver.vehicle_licence_number ?? "Licence pending"}
                         </p>
                       </div>
-                      <StatusPill status={driver.approval_status} />
+                      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                        <OrderAgeChip
+                          createdAt={driver.created_at}
+                          testIdPrefix={`admin-driver-${driver.id.slice(0, 8)}`}
+                        />
+                        <StatusPill status={driver.approval_status} />
+                      </div>
                     </div>
                     {(() => {
                       const docs = getApprovalDocs(driver.user_id, "driver");
@@ -773,6 +817,14 @@ export default async function AdminDashboardPage({
                 </div>
               )}
             </div>
+            <AdminPager
+              basePath="/admin/dashboard"
+              currentPage={driverPage}
+              pageCount={driverPageCount}
+              pageParam="driver_page"
+              preserveParams={{ tab: "approvals" }}
+              testIdPrefix="admin-driver-pager"
+            />
           </div>
         </div>
 
@@ -810,18 +862,49 @@ export default async function AdminDashboardPage({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-sm text-black/50">Order {order.id.slice(0, 8)}</p>
-                          <p className="mt-1 font-semibold">{order.buyer_name}</p>
                           <p className="mt-1 text-sm text-black/60">
-                            {formatMoney(order.buyer_total)} · Delivery {formatMoney(order.delivery_fee)}
+                            {formatMoney(order.buyer_total)} · Delivery {formatMoney(order.delivery_fee)} · Payment {order.payment_status.replaceAll("_", " ")}
                           </p>
                         </div>
-                        <StatusPill status={order.status} />
+                        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                          <OrderAgeChip
+                            createdAt={order.created_at}
+                            testIdPrefix={`admin-order-${order.id.slice(0, 8)}`}
+                          />
+                          <StatusPill status={order.status} />
+                        </div>
                       </div>
 
-                      <div className="mt-3 grid gap-2 text-sm text-black/60 sm:grid-cols-2">
-                        <span>Payment: {order.payment_status.replaceAll("_", " ")}</span>
-                        <span>Driver: {order.driver_id ? order.driver_id.slice(0, 8) : "Unassigned"}</span>
-                      </div>
+                      <OrderContactBlock
+                        buyer={{
+                          name: order.buyer_name,
+                          phone: order.buyer_phone,
+                          email: order.buyer_email,
+                          deliveryAddress: order.delivery_address ?? null
+                        }}
+                        provider={
+                          order.provider
+                            ? {
+                                name:
+                                  order.provider.business_name ??
+                                  order.provider.profile?.full_name ??
+                                  "Provider",
+                                phone: order.provider.profile?.phone ?? null
+                              }
+                            : null
+                        }
+                        driver={
+                          order.driver
+                            ? {
+                                name:
+                                  order.driver.profile?.full_name ??
+                                  (order.driver_id ? order.driver_id.slice(0, 8) : "Driver"),
+                                phone: order.driver.profile?.phone ?? null
+                              }
+                            : null
+                        }
+                        testIdPrefix={`admin-order-${order.id.slice(0, 8)}-contacts`}
+                      />
 
                       {canConfirmEft ? (
                         <form
@@ -893,6 +976,14 @@ export default async function AdminDashboardPage({
                 </div>
               )}
             </div>
+            <AdminPager
+              basePath="/admin/dashboard"
+              currentPage={opsPage}
+              pageCount={opsPageCount}
+              pageParam="ops_page"
+              preserveParams={{ tab: "operations" }}
+              testIdPrefix="admin-ops-pager"
+            />
           </div>
 
           <div className="panel" data-testid="admin-payouts-panel">
@@ -1096,9 +1187,9 @@ export default async function AdminDashboardPage({
             <div>
               <h2 className="text-base font-semibold">Paid driver payouts</h2>
               <p className="mt-1 text-body-sm text-black/55">
-                {paidTotalCount}{" "}
-                {paidTotalCount === 1 ? "payout" : "payouts"} on record · page{" "}
-                {paidPage} of {paidPageCount}
+                {paidPayoutsTotal ?? 0}{" "}
+                {(paidPayoutsTotal ?? 0) === 1 ? "payout" : "payouts"} on record · page{" "}
+                {paidPayoutsPage} of {paidPayoutsPageCount}
               </p>
             </div>
             <div className="flex gap-2">
@@ -1142,44 +1233,20 @@ export default async function AdminDashboardPage({
                 className="rounded-lg border border-black/10 bg-white p-4 text-sm text-black/60"
                 data-testid="admin-driver-paid-history-empty"
               >
-                {paidPage > 1
+                {paidPayoutsPage > 1
                   ? "No payouts on this page — go back."
                   : "Paid driver payouts will appear here."}
               </div>
             )}
           </div>
-          {paidPageCount > 1 ? (
-            <div
-              className="mt-4 flex items-center justify-between text-sm"
-              data-testid="admin-driver-paid-history-pager"
-            >
-              {paidHasPrev ? (
-                <a
-                  className="btn-secondary"
-                  data-testid="admin-driver-paid-history-prev"
-                  href={`/admin/dashboard?tab=payouts&paid_page=${paidPage - 1}`}
-                >
-                  ← Previous
-                </a>
-              ) : (
-                <span className="text-black/40">← Previous</span>
-              )}
-              <span className="text-black/60">
-                Page {paidPage} of {paidPageCount}
-              </span>
-              {paidHasNext ? (
-                <a
-                  className="btn-secondary"
-                  data-testid="admin-driver-paid-history-next"
-                  href={`/admin/dashboard?tab=payouts&paid_page=${paidPage + 1}`}
-                >
-                  Next →
-                </a>
-              ) : (
-                <span className="text-black/40">Next →</span>
-              )}
-            </div>
-          ) : null}
+          <AdminPager
+            basePath="/admin/dashboard"
+            currentPage={paidPayoutsPage}
+            pageCount={paidPayoutsPageCount}
+            pageParam="paid_page"
+            preserveParams={{ tab: "payouts" }}
+            testIdPrefix="admin-driver-paid-history-pager"
+          />
         </div>
           </>
         ) : null}
