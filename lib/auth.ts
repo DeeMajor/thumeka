@@ -33,6 +33,11 @@ export async function requireProfile(): Promise<SessionProfile> {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    console.warn(
+      "[auth] redirecting to /auth/sign-in cause=%s error=%s",
+      userError ? "getuser-error" : "no-user",
+      userError?.message ?? "n/a"
+    );
     redirect("/auth/sign-in");
   }
 
@@ -44,6 +49,11 @@ export async function requireRole(roles: AppRole[]): Promise<SessionProfile> {
   const session = await requireProfile();
 
   if (!roles.includes(session.profile.role)) {
+    console.warn(
+      "[auth] redirecting to role-home cause=wrong-role have=%s need=%s",
+      session.profile.role,
+      roles.join("|")
+    );
     redirect(roleHomePath(session.profile.role));
   }
 

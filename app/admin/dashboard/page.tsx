@@ -73,6 +73,17 @@ export default async function AdminDashboardPage({
 }: AdminDashboardPageProps) {
   const params = await searchParams;
   const tab = resolveAdminTab(params.tab);
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const sbCookies = cookieStore
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith("sb-"))
+    .map((cookie) => cookie.name);
+  console.log(
+    "[admin] render tab=%s sbCookies=%s",
+    tab,
+    sbCookies.length ? sbCookies.join(",") : "none"
+  );
   await requireRole(["admin"]);
   const supabase = await createSupabaseServerClient();
 
