@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatMoney, getGreeting, titleCase } from "@/lib/format";
+import { formatMoney, formatWaitingSince, getGreeting, titleCase } from "@/lib/format";
 
 // Intl's ZA currency formatter separates "R" from the amount with a
 // non-breaking space; use an explicit   so the assertion is unambiguous.
@@ -20,6 +20,15 @@ describe("format helpers", () => {
   it("normalizes status-like text into title case", () => {
     expect(titleCase("awaiting_buyer_eft")).toBe("Awaiting Buyer Eft");
     expect(titleCase("provider approved")).toBe("Provider Approved");
+  });
+
+  it("formats waiting time at minute / hour / day granularity", () => {
+    const now = new Date("2026-06-03T12:00:00Z");
+    expect(formatWaitingSince("2026-06-03T11:59:30Z", now)).toBe("just now");
+    expect(formatWaitingSince("2026-06-03T11:30:00Z", now)).toBe("30m");
+    expect(formatWaitingSince("2026-06-03T10:55:00Z", now)).toBe("1h 05m");
+    expect(formatWaitingSince("2026-06-01T03:00:00Z", now)).toBe("2d 9h");
+    expect(formatWaitingSince("not-a-date", now)).toBe("—");
   });
 
   it("returns a time-of-day greeting in South African time", () => {

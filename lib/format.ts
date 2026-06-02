@@ -40,3 +40,34 @@ export function getGreeting(date: Date = new Date()): string {
   if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+/**
+ * Compact "time elapsed" label for queue ages and audit timestamps.
+ * No date-fns dep — Date arithmetic only.
+ *
+ *   < 1 min  → "just now"
+ *   < 60 min → "32m"
+ *   < 24 h   → "1h 04m"
+ *   ≥ 24 h   → "2d 3h"
+ */
+export function formatWaitingSince(iso: string, now: Date = new Date()): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+
+  const diffMs = Math.max(0, now.getTime() - then);
+  const totalMinutes = Math.floor(diffMs / 60_000);
+
+  if (totalMinutes < 1) return "just now";
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes - totalHours * 60;
+
+  if (totalHours < 24) {
+    return `${totalHours}h ${String(minutes).padStart(2, "0")}m`;
+  }
+
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours - days * 24;
+  return `${days}d ${hours}h`;
+}
