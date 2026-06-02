@@ -55,7 +55,7 @@ export function BottomNav({ email, role, dashboardHref }: BottomNavProps) {
         data-testid="bottom-nav"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto flex h-16 max-w-5xl items-stretch">
+        <div className="mx-auto flex h-16 max-w-7xl items-stretch">
           {items.map(({ label, href, icon: Icon, testid }) => {
             const isActive = href === "/"
               ? pathname === "/"

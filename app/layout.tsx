@@ -59,7 +59,7 @@ export default async function RootLayout({
             className="hidden border-b border-black/5 bg-mist sm:block"
             data-testid="site-header-top-strip"
           >
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-end gap-5 px-4 py-1.5 text-caption font-medium text-black/65 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-end gap-5 px-4 py-1.5 text-caption font-medium text-black/65 sm:px-6 lg:px-8">
               <Link
                 className="transition hover:text-leaf"
                 data-testid="top-strip-support-link"
@@ -85,7 +85,7 @@ export default async function RootLayout({
               </Link>
             </div>
           </div>
-          <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
             <Link
               href="/"
               className="flex items-center gap-2 font-semibold"
@@ -189,7 +189,7 @@ export default async function RootLayout({
           className="mt-12 border-t border-black/10 bg-white"
           data-testid="site-footer"
         >
-          <div className="mx-auto grid w-full max-w-5xl gap-8 px-4 py-10 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+          <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
             <div>
               <div className="flex items-center gap-2 font-semibold text-ink">
                 <span className="brand-mark h-8 w-8">
@@ -264,7 +264,7 @@ export default async function RootLayout({
             </div>
           </div>
           <div className="border-t border-black/10">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4 text-caption text-black/45 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 text-caption text-black/45 sm:px-6 lg:px-8">
               <span>
                 &copy; {new Date().getFullYear()} {APP_NAME}. Built in South Africa.
               </span>

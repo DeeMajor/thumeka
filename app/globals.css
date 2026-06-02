@@ -29,7 +29,7 @@ body {
 
 @layer components {
   .page-shell {
-    @apply mx-auto flex w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8;
+    @apply mx-auto flex w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8;
   }
 
   /* Top stripe of every banded section gets a 3px brand-gradient bar so the
