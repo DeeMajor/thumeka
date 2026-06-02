@@ -36,6 +36,8 @@ npm run seed:dev
 # 5. Run the app
 npm run dev
 # → http://127.0.0.1:3000
+#   (the dev server binds to 127.0.0.1 — open this exact URL, not 0.0.0.0,
+#    or Safari will block it with "Not allowed to use restricted network port".)
 ```
 
 Sign in as any seeded user (passwords are in [docs/manual-test-cases.md](docs/manual-test-cases.md)).
