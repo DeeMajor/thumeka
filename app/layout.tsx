@@ -55,6 +55,36 @@ export default async function RootLayout({
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"
         >
+          <div
+            className="hidden border-b border-black/5 bg-mist sm:block"
+            data-testid="site-header-top-strip"
+          >
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-end gap-5 px-4 py-1.5 text-caption font-medium text-black/65 sm:px-6 lg:px-8">
+              <Link
+                className="transition hover:text-leaf"
+                data-testid="top-strip-support-link"
+                href="/support"
+              >
+                Support
+              </Link>
+              <span aria-hidden="true" className="text-black/20">·</span>
+              <Link
+                className="transition hover:text-leaf"
+                data-testid="top-strip-sell-link"
+                href="/auth/register"
+              >
+                Sell on {APP_NAME}
+              </Link>
+              <span aria-hidden="true" className="text-black/20">·</span>
+              <Link
+                className="transition hover:text-leaf"
+                data-testid="top-strip-drive-link"
+                href="/auth/register"
+              >
+                Drive for {APP_NAME}
+              </Link>
+            </div>
+          </div>
           <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
             <Link
               href="/"
@@ -71,12 +101,6 @@ export default async function RootLayout({
               </span>
             </Link>
             <nav className="hidden items-center gap-2 sm:flex" data-testid="desktop-nav">
-              <Link className="btn-secondary" href="/listings" data-testid="nav-listings-link">
-                Browse
-              </Link>
-              <Link className="btn-secondary" href="/support" data-testid="nav-support-link">
-                Support
-              </Link>
               {profile ? (
                 <>
                   <Link
@@ -104,12 +128,26 @@ export default async function RootLayout({
                 <Menu className="h-5 w-5" aria-hidden="true" />
                 <span className="sr-only">Menu</span>
               </summary>
-              <div className="absolute right-0 mt-2 flex w-44 flex-col gap-2 rounded-lg border border-black/10 bg-white p-2 shadow-soft">
-                <Link className="btn-secondary" href="/listings" data-testid="mobile-nav-listings-link">
+              <div className="absolute right-0 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-black/10 bg-white p-2 shadow-soft">
+                <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
                   Browse
                 </Link>
                 <Link className="btn-secondary" href="/support" data-testid="mobile-nav-support-link">
                   Support
+                </Link>
+                <Link
+                  className="btn-secondary"
+                  data-testid="mobile-nav-sell-link"
+                  href="/auth/register"
+                >
+                  Sell on {APP_NAME}
+                </Link>
+                <Link
+                  className="btn-secondary"
+                  data-testid="mobile-nav-drive-link"
+                  href="/auth/register"
+                >
+                  Drive for {APP_NAME}
                 </Link>
                 {profile ? (
                   <>
