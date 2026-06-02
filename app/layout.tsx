@@ -46,8 +46,11 @@ export default async function RootLayout({
 }>) {
   const profile = await getCurrentProfile().catch(() => null);
   return (
-    <html lang="en-ZA" className={jakarta.variable}>
-      <body className="font-sans text-body text-ink antialiased">
+    <html lang="en-ZA" className={jakarta.variable} suppressHydrationWarning>
+      <body
+        className="font-sans text-body text-ink antialiased"
+        suppressHydrationWarning
+      >
         <header
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"

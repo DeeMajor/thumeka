@@ -90,6 +90,23 @@ export function AddressAutocomplete({
           return;
         }
 
+        // DEPRECATED — Google flagged `places.Autocomplete` (the class
+        // constructor) for replacement by the `<gmp-place-autocomplete>` Web
+        // Component as of March 2025. The console warning is informational:
+        // Google has committed to ≥12 months notice before any removal, so
+        // the call still works. We're deferring the migration because:
+        //   1. The new API requires enabling the "Places API (New)" SKU in
+        //      Google Cloud (separate from the legacy "Places API"), with a
+        //      per-request pricing model instead of per-session.
+        //   2. The replacement is a declarative Web Component with a
+        //      different DOM surface — design review needed before swapping.
+        //   3. New behaviour uses a `gmp-placeselect` event instead of
+        //      `place_changed`, plus a different shape for the returned
+        //      Place object (no more `address_components` / `geometry.location`
+        //      in the same form). The suburb auto-fill path below would need
+        //      rewriting against the new Place API.
+        // Soft target: migrate within 6 months. README has the same note
+        // under "Known deprecations".
         autocomplete = new places.Autocomplete(inputRef.current, {
           componentRestrictions: { country: "za" },
           fields: ["formatted_address", "geometry", "address_components"]

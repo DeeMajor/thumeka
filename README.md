@@ -114,6 +114,19 @@ The runbook mirrors [docs/manual-test-cases.md](docs/manual-test-cases.md) — w
 - **Money columns** have `CHECK (>= 0)` constraints since [migration 010](supabase/migrations/010_money_check_constraints.sql) — the app never writes negatives, but the DB refuses them.
 - **Idempotency on key writes** — `confirmEftPaymentAction` and `acceptProviderOrderAction` use atomic-update guards (`.in("status", [...])`) to prevent double-commit on double-click.
 
+## Known deprecations
+
+- **Google Maps Places `Autocomplete` (legacy class)** — used in
+  [`components/address-autocomplete.tsx`](components/address-autocomplete.tsx).
+  Google deprecated `google.maps.places.Autocomplete` in March 2025 in
+  favour of the `<gmp-place-autocomplete>` Web Component. The legacy call
+  still works (≥12 months notice promised before any removal), but new
+  Google Cloud projects see a console warning. Migration involves
+  enabling the **"Places API (New)"** SKU in Google Cloud, swapping the
+  imperative class for the declarative element, and rewriting the
+  `place_changed` listener / suburb auto-fill against the new `gmp-placeselect`
+  event. Soft target: migrate within 6 months.
+
 ## Contributing
 
 1. Branch from `main`.
