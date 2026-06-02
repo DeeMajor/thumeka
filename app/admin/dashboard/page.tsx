@@ -501,11 +501,17 @@ export default async function AdminDashboardPage({
             <p className="mt-4 text-2xl font-semibold">{transactions ?? 0}</p>
             <p className="text-body-sm text-black/60">Transactions</p>
           </div>
-          <div className="panel min-w-[160px] shrink-0 snap-start lg:min-w-0" data-testid="admin-audit-logs-card">
+          <Link
+            className="panel min-w-[160px] shrink-0 snap-start transition hover:border-leaf lg:min-w-0"
+            data-testid="admin-audit-logs-card"
+            href="/admin/audit-logs"
+          >
             <FileClock className="h-5 w-5 text-black/55" aria-hidden="true" />
             <p className="mt-4 text-2xl font-semibold">{auditLogs ?? 0}</p>
-            <p className="text-body-sm text-black/60">Audit logs</p>
-          </div>
+            <p className="text-body-sm text-black/60">
+              Audit logs <span aria-hidden="true">→</span>
+            </p>
+          </Link>
           <div className="panel-leaf min-w-[160px] shrink-0 snap-start lg:min-w-0" data-testid="admin-drivers-owed-card">
             <Wallet className="h-5 w-5 text-leaf" aria-hidden="true" />
             <p className="mt-4 text-2xl font-semibold">
