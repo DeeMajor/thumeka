@@ -212,7 +212,7 @@ export default async function RootLayout({
               </p>
               <ul className="mt-3 space-y-2 text-body-sm">
                 <li>
-                  <Link className="text-ink hover:text-leaf" href="/listings">
+                  <Link className="text-ink hover:text-leaf" href="/">
                     Browse listings
                   </Link>
                 </li>
