@@ -32,6 +32,7 @@ export async function registerAction(formData: FormData) {
   const email = readString(formData, "email").toLowerCase();
   const password = readString(formData, "password");
   const role = normalizePublicRole(readString(formData, "role"));
+  const termsAccepted = readString(formData, "terms_accepted") === "1";
 
   if (!fullName || !email || !password) {
     redirect("/auth/register?error=Full%20name%2C%20email%20and%20password%20are%20required");
@@ -43,6 +44,12 @@ export async function registerAction(formData: FormData) {
 
   if (password.length < 8) {
     redirect("/auth/register?error=Password%20must%20be%20at%20least%208%20characters%20and%20contain%20letters%20and%20numbers");
+  }
+
+  if (!termsAccepted) {
+    redirect(
+      "/auth/register?error=You%20must%20agree%20to%20the%20Terms%20%26%20Conditions%20to%20register"
+    );
   }
 
   // Phone is optional at registration; if supplied, normalise to 0XXXXXXXXX.
@@ -66,7 +73,8 @@ export async function registerAction(formData: FormData) {
       data: {
         full_name: fullName,
         phone: normalizedPhone,
-        role
+        role,
+        terms_accepted_at: new Date().toISOString()
       }
     }
   });

@@ -30,6 +30,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-buyer"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-buyer-input").check();
+    await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
       page.waitForURL(/\/(auth\/sign-in|buyer\/orders)/),
       page.getByTestId("register-submit-button").click()
@@ -44,6 +45,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-provider"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-provider-input").check();
+    await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
       page.waitForURL(/\/(provider\/status|auth\/sign-in)/),
       page.getByTestId("register-submit-button").click()
@@ -124,6 +126,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-driver"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-driver-input").check();
+    await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
       page.waitForURL(/\/(driver\/status|auth\/sign-in)/),
       page.getByTestId("register-submit-button").click()
@@ -162,6 +165,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-email-input").fill("admin@thumeka.co.za");
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-buyer-input").check();
+    await page.getByTestId("register-terms-checkbox").check();
     await page.getByTestId("register-submit-button").click();
     // Server redirects back with an error in the URL.
     await page.waitForURL(/\/auth\/register\?error=/);

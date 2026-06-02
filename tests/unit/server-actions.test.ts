@@ -217,7 +217,8 @@ describe("server action flow coverage", () => {
           full_name: " Driver Test ",
           password: "password1",
           phone: " 0712345678 ",
-          role: "driver"
+          role: "driver",
+          terms_accepted: "1"
         })
       )
     ).rejects.toThrow("NEXT_REDIRECT:/auth/sign-in?registered=1");
@@ -227,7 +228,12 @@ describe("server action flow coverage", () => {
       password: "password1",
       options: {
         emailRedirectTo: "https://thumeka.test/auth/callback",
-        data: { full_name: "Driver Test", phone: "0712345678", role: "driver" }
+        data: {
+          full_name: "Driver Test",
+          phone: "0712345678",
+          role: "driver",
+          terms_accepted_at: expect.any(String) as unknown as string
+        }
       }
     });
     expect(mocks.ensureProfile).not.toHaveBeenCalled();
@@ -244,7 +250,13 @@ describe("server action flow coverage", () => {
 
     await expect(
       registerAction(
-        form({ email: "provider@example.com", full_name: "Provider", password: "password1", role: "provider" })
+        form({
+          email: "provider@example.com",
+          full_name: "Provider",
+          password: "password1",
+          role: "provider",
+          terms_accepted: "1"
+        })
       )
     ).rejects.toThrow("NEXT_REDIRECT:/auth/sign-in?registered=1");
 
@@ -261,7 +273,14 @@ describe("server action flow coverage", () => {
     });
 
     await expect(
-      registerAction(form({ email: "buyer@example.com", full_name: "Buyer", password: "password1" }))
+      registerAction(
+        form({
+          email: "buyer@example.com",
+          full_name: "Buyer",
+          password: "password1",
+          terms_accepted: "1"
+        })
+      )
     ).rejects.toThrow("NEXT_REDIRECT:/auth/register?error=Email%20already%20registered");
 
     const signInClient = mockAuthClient();

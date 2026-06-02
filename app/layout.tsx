@@ -249,9 +249,17 @@ export default async function RootLayout({
               <p className="text-caption font-semibold uppercase tracking-widest text-black/40">
                 Legal
               </p>
-              <ul className="mt-3 space-y-2 text-body-sm text-black/55">
-                <li>Terms (coming soon)</li>
-                <li>Privacy (coming soon)</li>
+              <ul className="mt-3 space-y-2 text-body-sm">
+                <li>
+                  <Link className="text-ink hover:text-leaf" href="/terms">
+                    Terms
+                  </Link>
+                </li>
+                <li>
+                  <Link className="text-ink hover:text-leaf" href="/privacy">
+                    Privacy
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

@@ -50,7 +50,11 @@ export async function ensureProfile(
       role,
       full_name:
         typeof metadata.full_name === "string" ? metadata.full_name : null,
-      phone: typeof metadata.phone === "string" ? metadata.phone : null
+      phone: typeof metadata.phone === "string" ? metadata.phone : null,
+      terms_accepted_at:
+        typeof metadata.terms_accepted_at === "string"
+          ? metadata.terms_accepted_at
+          : null
     })
     .select("*")
     .single();

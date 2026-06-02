@@ -4,6 +4,8 @@ import { UserPlus } from "lucide-react";
 
 import { registerAction } from "@/app/auth/actions";
 import { PasswordInput } from "@/components/password-input";
+import { PrivacyModalTrigger } from "@/components/privacy-modal";
+import { TermsModalTrigger } from "@/components/terms-modal";
 
 export const metadata: Metadata = {
   title: "Register"
@@ -104,6 +106,36 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               ))}
             </div>
           </fieldset>
+          <label
+            className="flex items-start gap-2 text-body-sm text-black/70"
+            data-testid="register-terms-label"
+          >
+            <input
+              className="mt-0.5 h-4 w-4 accent-leaf"
+              data-testid="register-terms-checkbox"
+              name="terms_accepted"
+              required
+              type="checkbox"
+              value="1"
+            />
+            <span>
+              I have read and agree to the{" "}
+              <TermsModalTrigger
+                className="font-semibold text-leaf hover:underline"
+                data-testid="register-terms-trigger"
+              >
+                Terms &amp; Conditions
+              </TermsModalTrigger>
+              {" "}and{" "}
+              <PrivacyModalTrigger
+                className="font-semibold text-leaf hover:underline"
+                data-testid="register-privacy-trigger"
+              >
+                Privacy Policy
+              </PrivacyModalTrigger>
+              .
+            </span>
+          </label>
           <button className="btn-primary w-full" data-testid="register-submit-button" type="submit">
             Create account
           </button>

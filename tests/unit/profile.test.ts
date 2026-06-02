@@ -78,7 +78,8 @@ describe("profile flow", () => {
       email: "buyer@example.com",
       role: "provider",
       full_name: "Provider Test",
-      phone: "0712345678"
+      phone: "0712345678",
+      terms_accepted_at: null
     });
   });
 

@@ -22,6 +22,7 @@ export type ProfileRow = {
   full_name: string | null;
   email: string;
   phone: string | null;
+  terms_accepted_at: string | null;
   created_at: string;
   updated_at: string;
 };
