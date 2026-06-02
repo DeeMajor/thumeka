@@ -10,7 +10,9 @@
 // - Passenger / local dev pass a TCP port number.
 // `listen()` accepts both; we just hand the raw value through.
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const next = require("next");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const http = require("http");
 
 const dev = process.env.NODE_ENV !== "production";
