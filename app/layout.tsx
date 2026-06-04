@@ -91,7 +91,7 @@ export default async function RootLayout({
               className="flex items-center gap-2 font-semibold"
               data-testid="nav-home-link"
             >
-              <span className="brand-mark h-9 w-9">
+              <span className="brand-mark h-12 w-12">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   alt={`${APP_NAME} logo`}
@@ -192,7 +192,7 @@ export default async function RootLayout({
           <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
             <div>
               <div className="flex items-center gap-2 font-semibold text-ink">
-                <span className="brand-mark h-8 w-8">
+                <span className="brand-mark h-10 w-10">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     alt={`${APP_NAME} logo`}

@@ -31,6 +31,7 @@ export async function registerAction(formData: FormData) {
   const phone = readString(formData, "phone");
   const email = readString(formData, "email").toLowerCase();
   const password = readString(formData, "password");
+  const confirmPassword = readString(formData, "confirm_password");
   const role = normalizePublicRole(readString(formData, "role"));
   const termsAccepted = readString(formData, "terms_accepted") === "1";
 
@@ -44,6 +45,12 @@ export async function registerAction(formData: FormData) {
 
   if (password.length < 8) {
     redirect("/auth/register?error=Password%20must%20be%20at%20least%208%20characters%20and%20contain%20letters%20and%20numbers");
+  }
+
+  // Server-side belt-and-braces check; the browser-side `required` on the
+  // confirm field catches the empty case, but does not check equality.
+  if (password !== confirmPassword) {
+    redirect("/auth/register?error=Passwords%20do%20not%20match");
   }
 
   if (!termsAccepted) {

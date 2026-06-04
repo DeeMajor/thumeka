@@ -81,6 +81,16 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               required
             />
           </label>
+          <label className="block space-y-1">
+            <span className="label">Confirm password</span>
+            <PasswordInput
+              autoComplete="new-password"
+              data-testid="register-confirm-password-input"
+              minLength={8}
+              name="confirm_password"
+              required
+            />
+          </label>
           <fieldset className="space-y-2">
             <legend className="label">Role</legend>
             <div className="grid gap-2 sm:grid-cols-3">

@@ -200,6 +200,17 @@ describe("server action flow coverage", () => {
       registerAction(form({ email: "buyer@example.com", full_name: "Buyer", password: "short" }))
     ).rejects.toThrow("NEXT_REDIRECT:/auth/register?error=Password%20must%20be%20at%20least%208%20characters");
 
+    await expect(
+      registerAction(
+        form({
+          email: "buyer@example.com",
+          full_name: "Buyer",
+          password: "password1",
+          confirm_password: "password2"
+        })
+      )
+    ).rejects.toThrow("NEXT_REDIRECT:/auth/register?error=Passwords%20do%20not%20match");
+
     expect(mocks.createSupabaseServerClient).not.toHaveBeenCalled();
   });
 
@@ -216,6 +227,7 @@ describe("server action flow coverage", () => {
           email: " DRIVER@Example.COM ",
           full_name: " Driver Test ",
           password: "password1",
+          confirm_password: "password1",
           phone: " 0712345678 ",
           role: "driver",
           terms_accepted: "1"
@@ -254,6 +266,7 @@ describe("server action flow coverage", () => {
           email: "provider@example.com",
           full_name: "Provider",
           password: "password1",
+          confirm_password: "password1",
           role: "provider",
           terms_accepted: "1"
         })
@@ -278,6 +291,7 @@ describe("server action flow coverage", () => {
           email: "buyer@example.com",
           full_name: "Buyer",
           password: "password1",
+          confirm_password: "password1",
           terms_accepted: "1"
         })
       )

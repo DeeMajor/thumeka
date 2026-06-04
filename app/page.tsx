@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Clock,
   MapPin,
   Search,
   ShoppingBag
@@ -40,7 +41,10 @@ async function getMarketplaceData(categoryName: string | undefined) {
 
     let listingsQuery = supabase
       .from("listings")
-      .select("*")
+      .select(
+        `*,
+         provider:provider_profiles!listings_provider_id_fkey ( business_name )`
+      )
       .eq("is_active", true)
       .eq("admin_disabled", false)
       .order("created_at", { ascending: false })
@@ -53,20 +57,26 @@ async function getMarketplaceData(categoryName: string | undefined) {
     const { data: listings } = await listingsQuery;
 
     return {
-      listings: (listings ?? []) as ListingRow[],
+      listings: (listings ?? []) as unknown as HomeListingRow[],
       categories: categoryList,
       matchedCategory,
       configured: true
     };
   } catch {
     return {
-      listings: [] as ListingRow[],
+      listings: [] as HomeListingRow[],
       categories: [] as CategoryRow[],
       matchedCategory: undefined,
       configured: false
     };
   }
 }
+
+// Marketplace cards show the seller's business name under the title; the
+// provider join is page-local so we don't widen the shared ListingRow type.
+type HomeListingRow = ListingRow & {
+  provider: { business_name: string | null } | null;
+};
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
@@ -90,10 +100,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="section-band">
         <div className="page-shell gap-6 py-10 sm:py-14">
           <div className="flex flex-col items-start gap-5">
-            <span className="inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-caption font-semibold uppercase tracking-widest text-leaf">
-              <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
-              South Africa&apos;s safest and most empowering marketplace
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-caption font-semibold uppercase tracking-widest text-leaf">
+                <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
+                South Africa&apos;s safest and most empowering marketplace
+              </span>
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-sunset/15 px-3 py-1 text-caption font-semibold uppercase tracking-widest text-sunset"
+                data-testid="home-hero-open-247-badge"
+              >
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                Open 24/7!
+              </span>
+            </div>
             <h1 className="max-w-3xl text-display-lg sm:text-display-xl">
               Anything <span className="text-brand-gradient">delivered</span>{" "}
               within an average of 40 minutes.
@@ -300,6 +319,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <h3 className="line-clamp-2 text-base font-semibold">
                       {listing.title}
                     </h3>
+                    {listing.provider?.business_name ? (
+                      <p className="mt-1 text-caption font-medium text-black/55">
+                        {listing.provider.business_name}
+                      </p>
+                    ) : null}
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-black/60">
                       {listing.description}
                     </p>

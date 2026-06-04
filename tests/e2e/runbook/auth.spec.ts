@@ -29,6 +29,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-phone-input").fill("0810000000");
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-buyer"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
+    await page.getByTestId("register-confirm-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-buyer-input").check();
     await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
@@ -44,6 +45,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-phone-input").fill("0810000000");
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-provider"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
+    await page.getByTestId("register-confirm-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-provider-input").check();
     await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
@@ -125,6 +127,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-phone-input").fill("0810000000");
     await page.getByTestId("register-email-input").fill(uniqueEmail("rb-driver"));
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
+    await page.getByTestId("register-confirm-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-driver-input").check();
     await page.getByTestId("register-terms-checkbox").check();
     await Promise.all([
@@ -164,6 +167,7 @@ test.describe.serial("Section 2 — Registration & sign-in", () => {
     await page.getByTestId("register-phone-input").fill("0810000000");
     await page.getByTestId("register-email-input").fill("admin@thumeka.co.za");
     await page.getByTestId("register-password-input").fill("Thumeka-runbook-1");
+    await page.getByTestId("register-confirm-password-input").fill("Thumeka-runbook-1");
     await page.getByTestId("register-role-buyer-input").check();
     await page.getByTestId("register-terms-checkbox").check();
     await page.getByTestId("register-submit-button").click();
