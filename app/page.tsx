@@ -99,9 +99,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               within an average of 40 minutes.
             </h1>
             <p className="max-w-2xl text-body text-black/65 sm:text-base sm:leading-7">
-              A marketplace for products, services, and errands &mdash; paid by
-              EFT, delivered by approved drivers. Find what makers and pros do
-              best.
+              Products, services, and errands in one marketplace. Secure
+              payments, approved-driver delivery, and trusted professionals at
+              your fingertips.
             </p>
           </div>
         </div>
@@ -117,11 +117,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             >
               Browse approved listings
             </h2>
-            <p className="mt-1 text-body-sm text-black/55">
-              {listings.length}{" "}
-              {listings.length === 1 ? "listing" : "listings"}
-              {matchedCategory ? ` in ${matchedCategory.name}` : ""}
-            </p>
+            {matchedCategory ? (
+              <p className="mt-1 text-body-sm text-black/55">
+                Filtered by {matchedCategory.name}
+              </p>
+            ) : null}
           </div>
           {profile ? (
             <Link
@@ -334,7 +334,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               Run your business with {APP_NAME}.
             </h2>
             <p className="mt-2 text-body text-black/60">
-              Reach buyers, ship through approved drivers, and get paid weekly.
+              Reach buyers, ship through approved drivers, and get paid.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">

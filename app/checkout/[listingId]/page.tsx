@@ -65,9 +65,9 @@ export default async function CheckoutPage({
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-mint text-leaf">
             <ClipboardList className="h-5 w-5" aria-hidden="true" />
           </div>
-          <h1 className="text-display-md text-ink">Request order</h1>
+          <h1 className="text-display-md text-ink">Checkout</h1>
           <p className="mt-2 text-sm leading-6 text-black/60">
-            EFT instructions are only shown after the provider accepts your order request.
+            Payment instructions are only shown after the provider accepts your order request.
           </p>
         </div>
 

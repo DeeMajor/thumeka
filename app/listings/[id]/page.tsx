@@ -97,7 +97,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
             data-testid="listing-request-order-link"
             href={`/checkout/${listing.id}`}
           >
-            Request order
+            Checkout
           </Link>
         </div>
       </div>

@@ -1107,10 +1107,10 @@ export default async function AdminDashboardPage({
           <div className="panel" data-testid="admin-driver-pending-payouts-panel">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h2 className="text-base font-semibold">Awaiting EFT</h2>
+                <h2 className="text-base font-semibold">Awaiting payout</h2>
                 <p className="mt-1 text-body-sm text-black/55">
-                  Pay the driver by EFT, then enter the bank reference to close
-                  the loop. The driver gets an email.
+                  Pay the driver via bank transfer, then enter the bank
+                  reference to close the loop. The driver gets an email.
                 </p>
               </div>
               {pendingDriverPayouts.length ? (

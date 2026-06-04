@@ -105,7 +105,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
               </h1>
             )}
             <p className="mt-2 text-body-sm text-black/55">
-              Track requests and pay by EFT once the seller accepts.
+              Track requests and complete payment once the seller accepts.
             </p>
           </div>
           {params.created ? (
@@ -213,7 +213,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                     className="mt-4 rounded-lg border border-leaf/20 bg-mint p-3 text-body-sm"
                     data-testid="buyer-order-eft-instructions"
                   >
-                    <p className="font-semibold text-leaf">EFT payment instructions</p>
+                    <p className="font-semibold text-leaf">Payment instructions</p>
                     <p className="mt-1 text-leaf/80">{eftPaymentInstructions}</p>
                     <p className="mt-2 font-mono text-caption font-medium text-leaf/60">
                       Reference: {order.id.slice(0, 8)}

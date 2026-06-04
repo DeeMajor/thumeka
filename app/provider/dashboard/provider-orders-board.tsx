@@ -329,7 +329,7 @@ function OrderDetail({
       ) : null}
 
       {eftInstructions ? (
-        <Section title="EFT instructions shared with buyer">
+        <Section title="Payment instructions shared with buyer">
           <p className="rounded-lg border border-leaf/20 bg-mint p-3 text-sm text-leaf/90">
             {eftInstructions}
           </p>

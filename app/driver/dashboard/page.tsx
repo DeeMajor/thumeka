@@ -279,7 +279,7 @@ export default async function DriverDashboardPage({
               {formatMoney(pendingPayoutsTotal)}
             </p>
             <p className="text-body-sm text-black/60">
-              Pending payouts (paid by EFT weekly)
+              Pending payouts
             </p>
           </div>
           <div className="panel" data-testid="driver-earnings-last-paid-card">
