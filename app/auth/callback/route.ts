@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { WelcomeEmail } from "@/emails/welcome";
 import { sendEmail } from "@/lib/email";
-import { getAppUrl } from "@/lib/env";
+import { getAppUrl, getPublicOrigin } from "@/lib/env";
 import { ensureProfile } from "@/lib/profile";
 import { roleHomePath } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,7 +10,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const redirectTo = new URL("/dashboard", requestUrl.origin);
+  // Anchor the redirect to the public origin (X-Forwarded-Host) rather than
+  // request.url's origin, which under iisnode is the internal loopback.
+  const redirectTo = new URL("/dashboard", getPublicOrigin(request));
 
   if (code) {
     const supabase = await createSupabaseServerClient();
