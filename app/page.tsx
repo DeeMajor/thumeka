@@ -284,18 +284,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="mobile-grid mt-5">
                 {listings.map((listing) => (
                   <Link
-                    className="rounded-lg border border-black/10 bg-white p-3 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4"
+                    className="rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4"
                     data-testid="listing-card"
                     href={`/listings/${listing.id}`}
                     key={listing.id}
                   >
                     <ListingImage
                       alt={listing.title}
-                      className="relative mb-3 aspect-square overflow-hidden rounded-md sm:mb-4 sm:aspect-[4/3]"
+                      className="relative mb-2 aspect-square overflow-hidden rounded-md sm:mb-4 sm:aspect-[4/3]"
                       storagePath={listing.image_url}
                     />
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="rounded-md bg-mint px-2 py-0.5 text-xs font-semibold text-leaf">
+                    <div className="mb-1 flex items-center justify-between gap-1 sm:mb-2 sm:gap-2">
+                      <span className="hidden rounded-md bg-mint px-2 py-0.5 text-xs font-semibold text-leaf sm:inline-flex">
                         {titleCase(listing.listing_type)}
                       </span>
                       {categoriesById.get(listing.category_id) ? (
@@ -303,15 +303,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                           {categoriesById.get(listing.category_id)?.name}
                         </span>
                       ) : null}
-                      <span className="text-base font-bold text-leaf sm:text-sm sm:font-semibold sm:text-ink">
+                      <span className="text-sm font-bold text-leaf sm:text-sm sm:font-semibold sm:text-ink">
                         {formatMoney(listing.price)}
                       </span>
                     </div>
-                    <h3 className="line-clamp-2 text-sm font-semibold sm:text-base">
+                    <h3 className="line-clamp-2 text-xs font-semibold leading-snug sm:text-base sm:leading-normal">
                       {listing.title}
                     </h3>
                     {listing.business_name ? (
-                      <p className="mt-1 line-clamp-1 text-caption font-medium text-black/55">
+                      <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-black/55 sm:mt-1 sm:text-caption">
                         {listing.business_name}
                       </p>
                     ) : null}
