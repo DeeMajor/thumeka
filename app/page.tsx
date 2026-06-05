@@ -7,6 +7,7 @@ import {
   ShoppingBag
 } from "lucide-react";
 
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import { EmptyState } from "@/components/empty-state";
 import { ListingImage } from "@/components/listing-image";
 import { getCurrentProfile } from "@/lib/auth";
@@ -289,11 +290,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     href={`/listings/${listing.id}`}
                     key={listing.id}
                   >
-                    <ListingImage
-                      alt={listing.title}
-                      className="relative mb-2 aspect-square overflow-hidden rounded-md sm:mb-4 sm:aspect-[4/3]"
-                      storagePath={listing.image_url}
-                    />
+                    <div className="relative mb-2 sm:mb-4">
+                      <ListingImage
+                        alt={listing.title}
+                        className="relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3]"
+                        storagePath={listing.image_url}
+                      />
+                      <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+                        <AddToCartButton
+                          data-testid={`listing-card-${listing.id.slice(0, 8)}-add`}
+                          item={{
+                            listingId: listing.id,
+                            providerId: listing.provider_id,
+                            title: listing.title,
+                            price: Number(listing.price),
+                            imageUrl: listing.image_url ?? null,
+                            businessName: listing.business_name ?? null
+                          }}
+                          variant="fab"
+                        />
+                      </div>
+                    </div>
                     <div className="mb-1 flex items-center justify-between gap-1 sm:mb-2 sm:gap-2">
                       <span className="hidden rounded-md bg-mint px-2 py-0.5 text-xs font-semibold text-leaf sm:inline-flex">
                         {titleCase(listing.listing_type)}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Store } from "lucide-react";
 
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import { ListingImage } from "@/components/listing-image";
 import type { CategoryRow, ListingRow } from "@/lib/database.types";
 import { formatMoney, titleCase } from "@/lib/format";
@@ -104,13 +105,27 @@ export default async function ListingPage({ params }: ListingPageProps) {
               {listing.availability_notes}
             </p>
           ) : null}
-          <Link
-            className="btn-primary mt-6 w-full"
-            data-testid="listing-request-order-link"
-            href={`/checkout/${listing.id}`}
-          >
-            Checkout
-          </Link>
+          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <Link
+              className="btn-primary inline-flex items-center justify-center gap-2"
+              data-testid="listing-request-order-link"
+              href={`/checkout/${listing.id}`}
+            >
+              Checkout
+            </Link>
+            <AddToCartButton
+              data-testid="listing-detail-add-to-cart"
+              item={{
+                listingId: listing.id,
+                providerId: listing.provider_id,
+                title: listing.title,
+                price: Number(listing.price),
+                imageUrl: listing.image_url ?? null,
+                businessName: listing.business_name ?? null
+              }}
+              variant="label"
+            />
+          </div>
         </div>
       </div>
     </div>

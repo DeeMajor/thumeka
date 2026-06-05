@@ -3,6 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
+import { CartIcon } from "@/components/cart-icon";
+import { CartProvider } from "@/components/cart-provider";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { getCurrentProfile } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
@@ -50,6 +52,7 @@ export default async function RootLayout({
         className="flex min-h-screen flex-col font-sans text-body text-ink antialiased"
         suppressHydrationWarning
       >
+        <CartProvider>
         <header
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"
@@ -102,12 +105,14 @@ export default async function RootLayout({
               </nav>
             </div>
 
-            {/* Right cluster: auth links, text-style with separators */}
+            {/* Right cluster: cart + auth links, text-style with separators */}
             <nav
               aria-label="Account"
               className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
               data-testid="desktop-nav"
             >
+              <CartIcon />
+              <span aria-hidden="true" className="h-5 w-px bg-black/15" />
               {profile ? (
                 <>
                   <Link
@@ -146,7 +151,11 @@ export default async function RootLayout({
                 </>
               )}
             </nav>
-            <MobileNavMenu>
+            {/* Mobile cluster: cart icon stays out of the dropdown so it's
+                always one tap away even when the menu is closed. */}
+            <div className="flex items-center gap-1 sm:hidden">
+              <CartIcon />
+              <MobileNavMenu>
               <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
                 Browse
               </Link>
@@ -190,6 +199,7 @@ export default async function RootLayout({
                 </Link>
               )}
             </MobileNavMenu>
+            </div>
           </div>
         </header>
         <main className="flex-1 pb-20 sm:pb-0" data-testid="app-main">
@@ -289,6 +299,7 @@ export default async function RootLayout({
             </div>
           </div>
         </footer>
+        </CartProvider>
       </body>
     </html>
   );
