@@ -30,6 +30,9 @@ type ProviderDashboardPageProps = {
     accepted?: string;
     error?: string;
     listing_created?: string;
+    listing_deactivated?: string;
+    listing_reactivated?: string;
+    listing_updated?: string;
     tab?: string;
   }>;
 };
@@ -94,7 +97,7 @@ export default async function ProviderDashboardPage({
       .select("*")
       .eq("provider_id", providerProfile.id)
       .order("created_at", { ascending: false })
-      .limit(4),
+      .limit(24),
     supabase
       .from("admin_settings")
       .select("eft_payment_instructions")
@@ -208,6 +211,30 @@ export default async function ProviderDashboardPage({
               Listing created.
             </div>
           ) : null}
+          {params.listing_updated ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="provider-listing-updated-message"
+            >
+              Listing updated.
+            </div>
+          ) : null}
+          {params.listing_deactivated ? (
+            <div
+              className="rounded-md border border-black/10 bg-black/5 p-3 text-sm text-ink"
+              data-testid="provider-listing-deactivated-message"
+            >
+              Listing deactivated. Hidden from the marketplace.
+            </div>
+          ) : null}
+          {params.listing_reactivated ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="provider-listing-reactivated-message"
+            >
+              Listing reactivated. Buyers can see it again.
+            </div>
+          ) : null}
           {params.error ? (
             <div
               className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
@@ -281,12 +308,12 @@ export default async function ProviderDashboardPage({
             />
 
             <div className="panel" data-testid="provider-listings-panel">
-              <h2 className="text-h3 text-ink">Recent listings</h2>
+              <h2 className="text-h3 text-ink">Your listings</h2>
               <div className="mt-4 space-y-3" data-testid="provider-listing-list">
                 {listings.length ? (
                   listings.map((listing) => (
                     <div
-                      className="flex gap-3 rounded-lg border border-black/10 bg-white p-3"
+                      className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-3 sm:flex-row sm:items-center"
                       data-testid="provider-listing-card"
                       key={listing.id}
                     >
@@ -296,12 +323,37 @@ export default async function ProviderDashboardPage({
                         storagePath={listing.image_url}
                         testIdPrefix="provider-listing-image"
                       />
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{listing.title}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-semibold">{listing.title}</p>
+                          {listing.is_active ? null : (
+                            <span
+                              className="inline-flex items-center rounded-md bg-black/5 px-2 py-0.5 text-caption font-semibold text-black/60"
+                              data-testid="provider-listing-inactive-badge"
+                            >
+                              Inactive
+                            </span>
+                          )}
+                          {listing.admin_disabled ? (
+                            <span
+                              className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-caption font-semibold text-red-700"
+                              data-testid="provider-listing-admin-disabled-badge"
+                            >
+                              Admin disabled
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-body-sm text-black/60">
                           {listing.suburb ?? "—"} · {formatMoney(listing.price)}
                         </p>
                       </div>
+                      <Link
+                        className="btn-secondary shrink-0"
+                        data-testid="provider-listing-edit-link"
+                        href={`/provider/listings/${listing.id}/edit`}
+                      >
+                        Edit
+                      </Link>
                     </div>
                   ))
                 ) : (

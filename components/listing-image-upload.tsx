@@ -31,12 +31,31 @@ function randomSuffix(): string {
 type ListingImageUploadProps = {
   userId: string;
   supabaseUrl: string;
+  /**
+   * Pre-existing image storage path (set on edit). When provided the
+   * component renders the existing image as the "current" value; the hidden
+   * input keeps the same path until the seller replaces it with a new
+   * upload.
+   */
+  defaultStoragePath?: string | null;
 };
 
-export function ListingImageUpload({ userId, supabaseUrl }: ListingImageUploadProps) {
+export function ListingImageUpload({
+  userId,
+  supabaseUrl,
+  defaultStoragePath
+}: ListingImageUploadProps) {
   const fileInputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<Status>({ kind: "empty" });
+  const initialStatus: Status = defaultStoragePath
+    ? {
+        kind: "uploaded",
+        previewUrl: getListingImagePublicUrl(defaultStoragePath, supabaseUrl) ?? "",
+        storagePath: defaultStoragePath,
+        sizeBytes: 0
+      }
+    : { kind: "empty" };
+  const [status, setStatus] = useState<Status>(initialStatus);
 
   const accept = ALLOWED_LISTING_IMAGE_MIME_TYPES.join(",");
 

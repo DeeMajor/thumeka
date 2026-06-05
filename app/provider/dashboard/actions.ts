@@ -247,8 +247,166 @@ export async function createProviderListingAction(formData: FormData) {
 
   revalidatePath("/provider/dashboard");
   revalidatePath("/listings");
+  revalidatePath("/");
   // Preserve the Listings tab on the redirect — without ?tab=listings the page
   // falls back to the Orders tab and the success banner appears without the
   // listings panel where the new card belongs.
   redirect(`/provider/dashboard?tab=listings&listing_created=${listing.id}`);
+}
+
+/**
+ * Update an existing listing. Same field shape as create. The provider must
+ * own the listing — RLS would also block writes to other providers' rows but
+ * we check explicitly so we can return a friendly error.
+ *
+ * If the seller renamed their business between creating the listing and
+ * editing it, we re-snapshot business_name here so the public card stays in
+ * sync. We also re-geocode the fulfillment address only if it changed, to
+ * avoid burning a Google API call on every edit.
+ */
+export async function updateProviderListingAction(formData: FormData) {
+  const { userId, supabase, providerProfile } = await getApprovedProviderProfile();
+  const listingId = readString(formData, "listing_id");
+  const title = readString(formData, "title");
+  const description = readString(formData, "description");
+  const categoryId = readString(formData, "category_id");
+  const price = readPositiveNumber(formData, "price");
+  const imageStoragePath = readString(formData, "image_storage_path");
+
+  if (!listingId) {
+    redirectWithError("Listing reference is missing");
+  }
+  if (!title || !description || !categoryId) {
+    redirectWithError("Listing title, description, and category are required");
+  }
+  if (price === null) {
+    redirectWithError("Listing price must be zero or more");
+  }
+
+  const { data: existing } = await supabase
+    .from("listings")
+    .select("id, provider_id, image_url, fulfillment_address, suburb")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (!existing) {
+    redirectWithError("Listing was not found");
+  }
+  if (existing.provider_id !== providerProfile.id) {
+    redirectWithError("You can only edit your own listings");
+  }
+
+  if (
+    imageStoragePath &&
+    !isValidListingImageStoragePath({ path: imageStoragePath, userId })
+  ) {
+    redirectWithError("Couldn't recognise the uploaded image. Try uploading again.");
+  }
+
+  const suburb = readString(formData, "suburb") || providerProfile.suburb;
+  const fulfillmentAddress =
+    readString(formData, "fulfillment_address") || providerProfile.address;
+
+  // Only re-geocode when the address actually changed; the existing
+  // coordinates stay accurate otherwise and we save a Google API call.
+  let geocoded:
+    | { lat: number | string | null; lng: number | string | null }
+    | null = null;
+  if (
+    fulfillmentAddress &&
+    fulfillmentAddress !== existing.fulfillment_address
+  ) {
+    const coords = await geocodeAddress(
+      `${fulfillmentAddress}, ${suburb ?? ""}, Durban, South Africa`
+    );
+    if (coords) {
+      geocoded = { lat: coords.lat, lng: coords.lng };
+    }
+  }
+
+  // Keep the previously-uploaded image if the seller didn't pick a new one.
+  const nextImageUrl = imageStoragePath || existing.image_url;
+
+  const updatePayload: Record<string, unknown> = {
+    category_id: categoryId,
+    title,
+    description,
+    listing_type: readListingType(formData),
+    price,
+    pricing_type: readString(formData, "pricing_type") || "fixed",
+    business_name: providerProfile.business_name,
+    suburb,
+    fulfillment_address: fulfillmentAddress,
+    image_url: nextImageUrl,
+    updated_at: new Date().toISOString()
+  };
+  if (geocoded) {
+    updatePayload.fulfillment_lat = geocoded.lat;
+    updatePayload.fulfillment_lng = geocoded.lng;
+  }
+
+  const { error } = await supabase
+    .from("listings")
+    .update(updatePayload)
+    .eq("id", listingId)
+    .eq("provider_id", providerProfile.id);
+
+  if (error) {
+    redirectWithError("Unable to update listing");
+  }
+
+  revalidatePath("/provider/dashboard");
+  revalidatePath("/listings");
+  revalidatePath("/");
+  revalidatePath(`/listings/${listingId}`);
+  redirect(`/provider/dashboard?tab=listings&listing_updated=${listingId}`);
+}
+
+/**
+ * Soft-delete / restore a listing. Sellers don't get a hard delete — the
+ * `orders.listing_id` foreign key would block it whenever there's order
+ * history, and even when it wouldn't, history pages need the row to render.
+ * Toggling `is_active` removes it from the marketplace + listing detail page
+ * while keeping everything in the database.
+ */
+export async function setProviderListingActiveAction(formData: FormData) {
+  const { supabase, providerProfile } = await getApprovedProviderProfile();
+  const listingId = readString(formData, "listing_id");
+  const isActive = readString(formData, "is_active") === "true";
+
+  if (!listingId) {
+    redirectWithError("Listing reference is missing");
+  }
+
+  const { data: existing } = await supabase
+    .from("listings")
+    .select("id, provider_id, is_active")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (!existing) {
+    redirectWithError("Listing was not found");
+  }
+  if (existing.provider_id !== providerProfile.id) {
+    redirectWithError("You can only change your own listings");
+  }
+
+  const { error } = await supabase
+    .from("listings")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("id", listingId)
+    .eq("provider_id", providerProfile.id);
+
+  if (error) {
+    redirectWithError(
+      isActive ? "Unable to reactivate listing" : "Unable to deactivate listing"
+    );
+  }
+
+  revalidatePath("/provider/dashboard");
+  revalidatePath("/listings");
+  revalidatePath("/");
+  revalidatePath(`/listings/${listingId}`);
+  const param = isActive ? "listing_reactivated" : "listing_deactivated";
+  redirect(`/provider/dashboard?tab=listings&${param}=${listingId}`);
 }
