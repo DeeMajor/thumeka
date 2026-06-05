@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 
-import { signInAction } from "@/app/auth/actions";
-import { PasswordInput } from "@/components/password-input";
+import { SignInForm } from "@/app/auth/sign-in/sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in"
@@ -34,11 +33,6 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </p>
         </div>
 
-        {params.error ? (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {params.error}
-          </div>
-        ) : null}
         {params.expired ? (
           <div
             className="mb-4 rounded-md border border-maize/60 bg-maize/20 p-3 text-sm text-ink"
@@ -53,33 +47,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
         ) : null}
 
-        <form action={signInAction} className="panel space-y-4" data-testid="sign-in-form">
-          <input name="next" type="hidden" value={params.next ?? ""} />
-          <label className="block space-y-1">
-            <span className="label">Email</span>
-            <input
-              autoComplete="email"
-              className="input"
-              data-testid="sign-in-email-input"
-              inputMode="email"
-              name="email"
-              required
-              type="email"
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="label">Password</span>
-            <PasswordInput
-              autoComplete="current-password"
-              data-testid="sign-in-password-input"
-              name="password"
-              required
-            />
-          </label>
-          <button className="btn-primary w-full" data-testid="sign-in-submit-button" type="submit">
-            Sign in
-          </button>
-        </form>
+        <SignInForm initialError={params.error} next={params.next} />
 
         <p className="mt-5 text-center text-sm text-black/60">
           Need an account?{" "}
