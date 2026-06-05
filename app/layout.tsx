@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
-import { Menu } from "lucide-react";
-
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
+import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { getCurrentProfile } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
 import { getAppUrl } from "@/lib/env";
@@ -120,59 +119,50 @@ export default async function RootLayout({
                 </Link>
               )}
             </nav>
-            <details className="relative sm:hidden" data-testid="mobile-nav-menu">
-              <summary
-                className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-md border border-black/15 bg-white"
-                data-testid="mobile-nav-toggle"
+            <MobileNavMenu>
+              <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
+                Browse
+              </Link>
+              <Link className="btn-secondary" href="/support" data-testid="mobile-nav-support-link">
+                Support
+              </Link>
+              <Link
+                className="btn-secondary"
+                data-testid="mobile-nav-sell-link"
+                href="/auth/register"
               >
-                <Menu className="h-5 w-5" aria-hidden="true" />
-                <span className="sr-only">Menu</span>
-              </summary>
-              <div className="absolute right-0 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-black/10 bg-white p-2 shadow-soft">
-                <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
-                  Browse
-                </Link>
-                <Link className="btn-secondary" href="/support" data-testid="mobile-nav-support-link">
-                  Support
-                </Link>
-                <Link
-                  className="btn-secondary"
-                  data-testid="mobile-nav-sell-link"
-                  href="/auth/register"
-                >
-                  Sell on {APP_NAME}
-                </Link>
-                <Link
-                  className="btn-secondary"
-                  data-testid="mobile-nav-drive-link"
-                  href="/auth/register"
-                >
-                  Drive for {APP_NAME}
-                </Link>
-                {profile ? (
-                  <>
-                    <Link
-                      className="btn-secondary"
-                      href={roleHomePath(profile.role)}
-                      data-testid="mobile-nav-dashboard-link"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      className="btn-primary"
-                      href="/auth/sign-out"
-                      data-testid="mobile-nav-sign-out-link"
-                    >
-                      Sign out
-                    </Link>
-                  </>
-                ) : (
-                  <Link className="btn-primary" href="/auth/sign-in" data-testid="mobile-nav-sign-in-link">
-                    Sign in
+                Sell on {APP_NAME}
+              </Link>
+              <Link
+                className="btn-secondary"
+                data-testid="mobile-nav-drive-link"
+                href="/auth/register"
+              >
+                Drive for {APP_NAME}
+              </Link>
+              {profile ? (
+                <>
+                  <Link
+                    className="btn-secondary"
+                    href={roleHomePath(profile.role)}
+                    data-testid="mobile-nav-dashboard-link"
+                  >
+                    Dashboard
                   </Link>
-                )}
-              </div>
-            </details>
+                  <Link
+                    className="btn-primary"
+                    href="/auth/sign-out"
+                    data-testid="mobile-nav-sign-out-link"
+                  >
+                    Sign out
+                  </Link>
+                </>
+              ) : (
+                <Link className="btn-primary" href="/auth/sign-in" data-testid="mobile-nav-sign-in-link">
+                  Sign in
+                </Link>
+              )}
+            </MobileNavMenu>
           </div>
         </header>
         <main className="flex-1 pb-20 sm:pb-0" data-testid="app-main">
