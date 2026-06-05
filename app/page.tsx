@@ -110,7 +110,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 data-testid="home-hero-open-247-badge"
               >
                 <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                Open 24/7!
+                Open 24/7
               </span>
             </div>
             <h1 className="max-w-3xl text-display-lg sm:text-display-xl">
