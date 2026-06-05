@@ -410,3 +410,61 @@ export async function setProviderListingActiveAction(formData: FormData) {
   const param = isActive ? "listing_reactivated" : "listing_deactivated";
   redirect(`/provider/dashboard?tab=listings&${param}=${listingId}`);
 }
+
+/**
+ * Hard-delete a listing. The `orders.listing_id` FK is RESTRICT, so any
+ * listing with order history is blocked at the database level — Supabase
+ * surfaces the failure as Postgres error code 23503 (foreign_key_violation).
+ * When that happens, redirect the seller to a clear message pointing them
+ * at the Deactivate flow instead of throwing a cryptic "Unable to delete"
+ * error.
+ *
+ * If the row is genuinely removable (no orders, no payouts, nothing
+ * pointing at it), the cascade on `listings → provider_id` doesn't apply in
+ * reverse so this leaves the provider, profile, and storage image
+ * untouched. The Supabase Storage bucket retains the image; we accept that
+ * stranded file for now — cleaning storage is its own batch.
+ */
+export async function deleteProviderListingAction(formData: FormData) {
+  const { supabase, providerProfile } = await getApprovedProviderProfile();
+  const listingId = readString(formData, "listing_id");
+
+  if (!listingId) {
+    redirectWithError("Listing reference is missing");
+  }
+
+  const { data: existing } = await supabase
+    .from("listings")
+    .select("id, provider_id")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (!existing) {
+    redirectWithError("Listing was not found");
+  }
+  if (existing.provider_id !== providerProfile.id) {
+    redirectWithError("You can only delete your own listings");
+  }
+
+  const { error } = await supabase
+    .from("listings")
+    .delete()
+    .eq("id", listingId)
+    .eq("provider_id", providerProfile.id);
+
+  if (error) {
+    // Postgres FK violation. The seller has order history pinned to this
+    // listing — guide them to the visibility toggle instead.
+    if (error.code === "23503") {
+      redirectWithError(
+        "This listing has order history and can't be deleted. Deactivate it instead to hide it from the marketplace."
+      );
+    }
+    redirectWithError("Unable to delete listing");
+  }
+
+  revalidatePath("/provider/dashboard");
+  revalidatePath("/listings");
+  revalidatePath("/");
+  redirect("/provider/dashboard?tab=listings&listing_deleted=1");
+}

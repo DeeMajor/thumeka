@@ -31,6 +31,7 @@ type ProviderDashboardPageProps = {
     error?: string;
     listing_created?: string;
     listing_deactivated?: string;
+    listing_deleted?: string;
     listing_reactivated?: string;
     listing_updated?: string;
     tab?: string;
@@ -233,6 +234,14 @@ export default async function ProviderDashboardPage({
               data-testid="provider-listing-reactivated-message"
             >
               Listing reactivated. Buyers can see it again.
+            </div>
+          ) : null}
+          {params.listing_deleted ? (
+            <div
+              className="rounded-md border border-black/10 bg-black/5 p-3 text-sm text-ink"
+              data-testid="provider-listing-deleted-message"
+            >
+              Listing deleted.
             </div>
           ) : null}
           {params.error ? (

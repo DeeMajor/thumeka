@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, EyeOff, Eye } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Trash2 } from "lucide-react";
 
 import { EditListingForm } from "@/app/provider/listings/[id]/edit/edit-listing-form";
-import { setProviderListingActiveAction } from "@/app/provider/dashboard/actions";
+import {
+  deleteProviderListingAction,
+  setProviderListingActiveAction
+} from "@/app/provider/dashboard/actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { requireRole } from "@/lib/auth";
 import type {
   CategoryRow,
@@ -134,6 +138,34 @@ export default async function EditListingPage({
                 </>
               )}
             </button>
+          </form>
+        </div>
+
+        <div
+          className="mt-6 panel border-red-200"
+          data-testid="provider-edit-listing-danger-zone"
+        >
+          <h2 className="text-h3 text-ink">Danger zone</h2>
+          <p className="mt-2 text-body-sm text-black/60">
+            Permanently delete this listing. If buyers have ever placed an
+            order against it, the listing can&apos;t be deleted — order history
+            needs the row. In that case, use Deactivate above to hide it
+            from the marketplace instead.
+          </p>
+          <form
+            action={deleteProviderListingAction}
+            className="mt-4"
+            data-testid="provider-edit-listing-delete-form"
+          >
+            <input name="listing_id" type="hidden" value={listing.id} />
+            <ConfirmSubmitButton
+              className="btn-secondary flex items-center gap-2 border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50"
+              data-testid="provider-edit-listing-delete-button"
+              message="Delete this listing permanently? This can't be undone."
+            >
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              Delete listing
+            </ConfirmSubmitButton>
           </form>
         </div>
       </section>
