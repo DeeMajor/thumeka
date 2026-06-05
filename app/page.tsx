@@ -307,7 +307,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         {formatMoney(listing.price)}
                       </span>
                     </div>
-                    <h3 className="line-clamp-2 text-xs font-semibold leading-snug sm:text-base sm:leading-normal">
+                    <h3 className="line-clamp-2 min-h-[2.25rem] text-xs font-semibold leading-snug sm:min-h-[3rem] sm:text-base sm:leading-normal">
                       {listing.title}
                     </h3>
                     {listing.business_name ? (
@@ -315,12 +315,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         {listing.business_name}
                       </p>
                     ) : null}
-                    <p className="mt-2 hidden line-clamp-2 text-sm leading-6 text-black/60 sm:block">
+                    <p className="mt-2 hidden line-clamp-1 text-sm leading-6 text-black/60 sm:block">
                       {listing.description}
                     </p>
-                    <p className="mt-3 hidden items-center gap-1 text-xs font-medium text-black/55 sm:flex">
-                      <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
-                      {listing.suburb ?? "—"}
+                    <p className="mt-3 hidden items-center gap-1 truncate text-xs font-medium text-black/55 sm:flex">
+                      <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{listing.suburb ?? "—"}</span>
                     </p>
                   </Link>
                 ))}
