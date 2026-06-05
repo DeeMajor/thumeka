@@ -22,11 +22,28 @@ export function getAppUrl() {
  * `http://localhost:<port>/...` — building a redirect off that produces a
  * URL the browser can't open.
  *
- * IIS reliably sets `X-Forwarded-Host` and `X-Forwarded-Proto`, so we
- * prefer those. We fall back to the `Host` header (covers vanilla Node
- * setups behind a transparent proxy) and finally to NEXT_PUBLIC_APP_URL.
+ * Resolution order:
+ *
+ *  1. **`NEXT_PUBLIC_APP_URL`** (preferred). In production this is the
+ *     canonical origin. Trusting the env var avoids guessing scheme/host
+ *     from proxy headers — Plesk's IIS in particular has been observed
+ *     forwarding `X-Forwarded-Proto: http` even when the original request
+ *     was HTTPS (TLS is terminated by a layer upstream of iisnode). That
+ *     caused redirects built off the forwarded headers to land on
+ *     `http://thumeka.co.za/…` and trip the browser's mixed-content
+ *     blocker.
+ *  2. `X-Forwarded-Host` + `X-Forwarded-Proto` — covers Vercel /
+ *     Netlify / Cloudflare deployments that set both correctly.
+ *  3. `Host` header — vanilla Node behind a transparent proxy or local
+ *     dev.
+ *  4. `getAppUrl()` — final safety net.
  */
 export function getPublicOrigin(request: Request): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
   const xfHost = request.headers.get("x-forwarded-host");
   const xfProto = request.headers.get("x-forwarded-proto");
   if (xfHost) {
