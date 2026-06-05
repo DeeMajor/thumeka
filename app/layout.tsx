@@ -54,69 +54,96 @@ export default async function RootLayout({
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"
         >
-          <div
-            className="hidden border-b border-black/5 bg-mist sm:block"
-            data-testid="site-header-top-strip"
-          >
-            <div className="mx-auto flex w-full max-w-7xl items-center justify-end gap-5 px-4 py-1.5 text-caption font-medium text-black/65 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            {/* Left cluster: logo + inline nav (Takealot-style) */}
+            <div className="flex items-center gap-4 sm:gap-6">
               <Link
-                className="transition hover:text-leaf"
-                data-testid="top-strip-support-link"
-                href="/support"
+                href="/"
+                className="flex items-center gap-2 font-semibold"
+                data-testid="nav-home-link"
               >
-                Support
+                <span className="brand-mark h-12 w-12">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={`${APP_NAME} logo`}
+                    className="h-full w-full object-contain"
+                    src="/thumeka.png"
+                  />
+                </span>
               </Link>
-              <span aria-hidden="true" className="text-black/20">·</span>
-              <Link
-                className="transition hover:text-leaf"
-                data-testid="top-strip-sell-link"
-                href="/auth/register"
+              <nav
+                aria-label="Primary"
+                className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
+                data-testid="desktop-primary-nav"
               >
-                Sell on {APP_NAME}
-              </Link>
-              <span aria-hidden="true" className="text-black/20">·</span>
-              <Link
-                className="transition hover:text-leaf"
-                data-testid="top-strip-drive-link"
-                href="/auth/register"
-              >
-                Drive for {APP_NAME}
-              </Link>
+                <Link
+                  className="transition hover:text-leaf"
+                  data-testid="nav-support-link"
+                  href="/support"
+                >
+                  Support
+                </Link>
+                <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+                <Link
+                  className="transition hover:text-leaf"
+                  data-testid="nav-sell-link"
+                  href="/auth/register"
+                >
+                  Sell on {APP_NAME}
+                </Link>
+                <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+                <Link
+                  className="transition hover:text-leaf"
+                  data-testid="nav-drive-link"
+                  href="/auth/register"
+                >
+                  Drive for {APP_NAME}
+                </Link>
+              </nav>
             </div>
-          </div>
-          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link
-              href="/"
-              className="flex items-center gap-2 font-semibold"
-              data-testid="nav-home-link"
+
+            {/* Right cluster: auth links, text-style with separators */}
+            <nav
+              aria-label="Account"
+              className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
+              data-testid="desktop-nav"
             >
-              <span className="brand-mark h-12 w-12">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt={`${APP_NAME} logo`}
-                  className="h-full w-full object-contain"
-                  src="/thumeka.png"
-                />
-              </span>
-            </Link>
-            <nav className="hidden items-center gap-2 sm:flex" data-testid="desktop-nav">
               {profile ? (
                 <>
                   <Link
-                    className="btn-secondary"
+                    className="transition hover:text-leaf"
                     href={roleHomePath(profile.role)}
                     data-testid="nav-dashboard-link"
                   >
                     Dashboard
                   </Link>
-                  <Link className="btn-primary" href="/auth/sign-out" data-testid="nav-sign-out-link">
+                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+                  <Link
+                    className="transition hover:text-leaf"
+                    href="/auth/sign-out"
+                    data-testid="nav-sign-out-link"
+                  >
                     Sign out
                   </Link>
                 </>
               ) : (
-                <Link className="btn-primary" href="/auth/sign-in" data-testid="nav-sign-in-link">
-                  Sign in
-                </Link>
+                <>
+                  <Link
+                    className="transition hover:text-leaf"
+                    href="/auth/sign-in"
+                    data-testid="nav-sign-in-link"
+                  >
+                    Sign in
+                  </Link>
+                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+                  <Link
+                    className="transition hover:text-leaf"
+                    href="/auth/register"
+                    data-testid="nav-register-link"
+                  >
+                    Register
+                  </Link>
+                </>
               )}
             </nav>
             <MobileNavMenu>
