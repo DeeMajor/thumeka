@@ -26,11 +26,27 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookieToSet[]) {
-          cookiesToSet.forEach(({ name, value }) =>
+          // Drop deletion writes. The SSR client occasionally tries to
+          // clear cookies under iisnode (cookie format being read
+          // differently than the browser SDK wrote them, refresh dance
+          // failing in confusing ways), which would wipe sessions the
+          // browser SDK has just legitimately set. The browser handles
+          // its own session lifecycle; the server-side SDK should be
+          // read-only for the empty-value case. Real cookie writes
+          // (refresh tokens, sign-in callback, etc.) still go through.
+          const realWrites = cookiesToSet.filter(({ value }) => Boolean(value));
+          if (realWrites.length < cookiesToSet.length) {
+            console.warn(
+              "[middleware] skipped %d empty-value cookie write(s) — likely SDK deletion attempt",
+              cookiesToSet.length - realWrites.length
+            );
+          }
+          if (realWrites.length === 0) return;
+          realWrites.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
+          realWrites.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
         }

@@ -25,6 +25,13 @@ export async function createSupabaseServerClient() {
         setAll(cookiesToSet: CookieToSet[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
+              // Drop deletion writes — under iisnode the server SSR
+              // client occasionally tries to clear cookies after reading
+              // a freshly-set browser session, which silently wipes
+              // the user out within a second of sign-in. The browser
+              // SDK owns the session lifecycle; the server only needs
+              // to be able to refresh (real value) — not delete.
+              if (!value) return;
               cookieStore.set(name, value, options);
             });
           } catch {

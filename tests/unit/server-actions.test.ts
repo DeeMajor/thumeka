@@ -8,10 +8,15 @@ const mocks = vi.hoisted(() => ({
   }),
   requireRole: vi.fn(),
   sendEmail: vi.fn(async () => undefined),
-  getDeliveryQuote: vi.fn()
+  getDeliveryQuote: vi.fn(),
+  cookies: vi.fn(async () => ({
+    getAll: () => [],
+    delete: vi.fn()
+  }))
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/auth", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/profile", () => ({ ensureProfile: mocks.ensureProfile }));
 vi.mock("@/lib/supabase/server", () => ({
