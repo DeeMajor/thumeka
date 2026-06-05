@@ -15,28 +15,12 @@ type ListingPageProps = {
   }>;
 };
 
-// Seller info is joined inline (business name from provider_profiles, with a
-// fallback to the underlying profile's full name) so the detail page can show
-// who the listing belongs to in a single round trip.
-type ListingDetailRow = ListingRow & {
-  provider: {
-    business_name: string | null;
-    profile: { full_name: string | null } | null;
-  } | null;
-};
-
 async function getListing(id: string) {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: listing } = await supabase
       .from("listings")
-      .select(
-        `*,
-         provider:provider_profiles!listings_provider_id_fkey (
-           business_name,
-           profile:profiles!provider_profiles_user_id_fkey ( full_name )
-         )`
-      )
+      .select("*")
       .eq("id", id)
       .eq("is_active", true)
       .eq("admin_disabled", false)
@@ -53,7 +37,7 @@ async function getListing(id: string) {
       .maybeSingle();
 
     return {
-      listing: listing as unknown as ListingDetailRow,
+      listing: listing as ListingRow,
       category: category as Pick<CategoryRow, "name" | "slug"> | null
     };
   } catch {
@@ -95,21 +79,18 @@ export default async function ListingPage({ params }: ListingPageProps) {
             ) : null}
           </div>
           <h1 className="text-display-md text-ink">{listing.title}</h1>
-          {(() => {
-            const sellerName =
-              listing.provider?.business_name ??
-              listing.provider?.profile?.full_name ??
-              null;
-            return sellerName ? (
-              <p
-                className="mt-2 flex items-center gap-1.5 text-sm font-medium text-black/70"
-                data-testid="listing-detail-seller"
-              >
-                <Store aria-hidden="true" className="h-4 w-4 text-black/45" />
-                Sold by <span className="font-semibold text-ink">{sellerName}</span>
-              </p>
-            ) : null;
-          })()}
+          {listing.business_name ? (
+            <p
+              className="mt-2 flex items-center gap-1.5 text-sm font-medium text-black/70"
+              data-testid="listing-detail-seller"
+            >
+              <Store aria-hidden="true" className="h-4 w-4 text-black/45" />
+              Sold by{" "}
+              <span className="font-semibold text-ink">
+                {listing.business_name}
+              </span>
+            </p>
+          ) : null}
           <p className="mt-3 text-xl font-semibold text-leaf">
             {formatMoney(listing.price)}
           </p>

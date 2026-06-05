@@ -84,6 +84,7 @@ export type ListingRow = {
   listing_type: ListingType;
   price: string;
   pricing_type: "fixed" | "from" | "quote_required" | "hourly" | "daily";
+  business_name: string | null;
   suburb: string | null;
   location_notes: string | null;
   fulfillment_address: string | null;

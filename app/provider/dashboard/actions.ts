@@ -226,6 +226,10 @@ export async function createProviderListingAction(formData: FormData) {
       listing_type: readListingType(formData),
       price,
       pricing_type: readString(formData, "pricing_type") || "fixed",
+      // Snapshot business name on the listing so the public marketplace
+      // can show "Sold by ..." without joining provider_profiles (which is
+      // RLS-gated to owner/admin to keep bank details private).
+      business_name: providerProfile.business_name,
       suburb,
       fulfillment_address: fulfillmentAddress,
       fulfillment_lat: fulfillmentCoords?.lat ?? null,

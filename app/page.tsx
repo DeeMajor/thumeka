@@ -41,10 +41,7 @@ async function getMarketplaceData(categoryName: string | undefined) {
 
     let listingsQuery = supabase
       .from("listings")
-      .select(
-        `*,
-         provider:provider_profiles!listings_provider_id_fkey ( business_name )`
-      )
+      .select("*")
       .eq("is_active", true)
       .eq("admin_disabled", false)
       .order("created_at", { ascending: false })
@@ -57,26 +54,20 @@ async function getMarketplaceData(categoryName: string | undefined) {
     const { data: listings } = await listingsQuery;
 
     return {
-      listings: (listings ?? []) as unknown as HomeListingRow[],
+      listings: (listings ?? []) as ListingRow[],
       categories: categoryList,
       matchedCategory,
       configured: true
     };
   } catch {
     return {
-      listings: [] as HomeListingRow[],
+      listings: [] as ListingRow[],
       categories: [] as CategoryRow[],
       matchedCategory: undefined,
       configured: false
     };
   }
 }
-
-// Marketplace cards show the seller's business name under the title; the
-// provider join is page-local so we don't widen the shared ListingRow type.
-type HomeListingRow = ListingRow & {
-  provider: { business_name: string | null } | null;
-};
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
@@ -319,9 +310,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <h3 className="line-clamp-2 text-sm font-semibold sm:text-base">
                       {listing.title}
                     </h3>
-                    {listing.provider?.business_name ? (
+                    {listing.business_name ? (
                       <p className="mt-1 line-clamp-1 text-caption font-medium text-black/55">
-                        {listing.provider.business_name}
+                        {listing.business_name}
                       </p>
                     ) : null}
                     <p className="mt-2 hidden line-clamp-2 text-sm leading-6 text-black/60 sm:block">
