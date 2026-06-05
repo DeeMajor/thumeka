@@ -5,6 +5,9 @@ import { ArrowRight, ShoppingCart, Store, Trash2 } from "lucide-react";
 
 import { useCart } from "@/components/cart-provider";
 import { formatMoney } from "@/lib/format";
+import { getListingImagePublicUrl } from "@/lib/listing-images";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
 export default function CartPage() {
   const { items, businessName, total, ready, removeItem, clear } = useCart();
@@ -90,19 +93,27 @@ export default function CartPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
           {/* Items column */}
           <ul className="space-y-3" data-testid="cart-item-list">
-            {items.map((item) => (
+            {items.map((item) => {
+              // The cart stores `imageUrl` as the Supabase storage path
+              // (so the cart payload stays stable across env changes); we
+              // resolve to a full public URL at render time.
+              const publicUrl = getListingImagePublicUrl(
+                item.imageUrl,
+                SUPABASE_URL
+              );
+              return (
               <li
                 className="flex items-center gap-3 rounded-lg border border-black/10 bg-white p-3 sm:p-4"
                 data-testid="cart-item"
                 data-listing-id={item.listingId}
                 key={item.listingId}
               >
-                {item.imageUrl ? (
+                {publicUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     alt={item.title}
                     className="h-16 w-16 shrink-0 rounded-md object-cover sm:h-20 sm:w-20"
-                    src={item.imageUrl}
+                    src={publicUrl}
                   />
                 ) : (
                   <div
@@ -132,7 +143,8 @@ export default function CartPage() {
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           {/* Summary column */}

@@ -54,6 +54,7 @@ export const SEEDED_CATEGORIES = [
   "Groceries",
   "Clothing",
   "Beauty",
+  "Medication",
   "Home services",
   "Cleaning",
   "Repairs",
