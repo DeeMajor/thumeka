@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 type SignInPageProps = {
   searchParams: Promise<{
     error?: string;
+    expired?: string;
     next?: string;
     registered?: string;
   }>;
@@ -36,6 +37,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         {params.error ? (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {params.error}
+          </div>
+        ) : null}
+        {params.expired ? (
+          <div
+            className="mb-4 rounded-md border border-maize/60 bg-maize/20 p-3 text-sm text-ink"
+            data-testid="sign-in-expired-message"
+          >
+            Your session expired. Please sign in again to continue.
           </div>
         ) : null}
         {params.registered ? (
