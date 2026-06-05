@@ -44,22 +44,22 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && isProtectedPath(request.nextUrl.pathname)) {
-    // Distinguish "never signed in" from "stale/expired session". The latter
-    // happens when the browser has sb-* cookies but Supabase rejects them
-    // (access token expired and refresh failed, refresh token revoked,
-    // cookie rotation didn't propagate cleanly through Plesk's iisnode).
-    // Without this, the symptom looks like "I'm signed in but the site
-    // keeps bouncing me to sign-in for no reason" — confusing for users
-    // who never explicitly signed out.
+    // Diagnostic only — emit a console.warn so we can read in Plesk's Node
+    // stdout why a redirect fired (e.g. cookie names present, getUser
+    // error). We intentionally do NOT clear sb-* cookies here and we do
+    // NOT set `expired=1` on the redirect URL — under iisnode there's a
+    // race where the cookies set by signInAction aren't visible to the
+    // middleware on the immediate next request, so the earlier
+    // "clear + flag" defence was wiping freshly-set sessions and bouncing
+    // users to sign-in TWICE on a clean login. Leaving cookies alone
+    // means the next sign-in just overwrites them; no loop, no false
+    // "expired" banner.
     const sbCookies = request.cookies
       .getAll()
       .filter((cookie) => cookie.name.startsWith("sb-"));
-    const wasSignedIn = sbCookies.length > 0;
-
     console.warn(
-      "[middleware] redirecting to /auth/sign-in path=%s wasSignedIn=%s sbCookies=%s userError=%s",
+      "[middleware] redirecting to /auth/sign-in path=%s sbCookies=%s userError=%s",
       request.nextUrl.pathname,
-      wasSignedIn,
       sbCookies.map((cookie) => cookie.name).join(",") || "none",
       userError?.message ?? "n/a"
     );
@@ -67,27 +67,7 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/sign-in";
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);
-    if (wasSignedIn) {
-      redirectUrl.searchParams.set("expired", "1");
-    }
-
-    const redirectResponse = NextResponse.redirect(redirectUrl);
-
-    // Wipe the dead cookies on the way out so the next request starts
-    // clean — otherwise the browser keeps sending the same rejected
-    // token and every protected URL bounces in the same way.
-    if (wasSignedIn) {
-      sbCookies.forEach((cookie) => {
-        redirectResponse.cookies.set({
-          maxAge: 0,
-          name: cookie.name,
-          path: "/",
-          value: ""
-        });
-      });
-    }
-
-    return redirectResponse;
+    return NextResponse.redirect(redirectUrl);
   }
 
   return response;
