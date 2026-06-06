@@ -81,7 +81,7 @@ describe("auth guard flow", () => {
     mocks.ensureProfile.mockResolvedValue(providerProfile);
 
     await expect(requireRole(["buyer"])).rejects.toThrow(
-      "NEXT_REDIRECT:/provider/status"
+      "NEXT_REDIRECT:/provider/dashboard"
     );
   });
 });

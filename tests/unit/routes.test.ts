@@ -5,7 +5,7 @@ import { isAuthPath, isProtectedPath, roleHomePath } from "@/lib/routes";
 describe("route helpers", () => {
   it("maps roles to their default workspace", () => {
     expect(roleHomePath("buyer")).toBe("/buyer/orders");
-    expect(roleHomePath("provider")).toBe("/provider/status");
+    expect(roleHomePath("provider")).toBe("/provider/dashboard");
     expect(roleHomePath("driver")).toBe("/driver/status");
     expect(roleHomePath("admin")).toBe("/admin/dashboard");
   });

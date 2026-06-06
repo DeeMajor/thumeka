@@ -73,9 +73,6 @@ export default async function ProviderStatusPage({ searchParams }: ProviderStatu
                   Open dashboard
                 </Link>
               ) : null}
-              <Link className="btn-secondary" data-testid="provider-update-application-link" href="/provider/apply">
-                Update application
-              </Link>
             </div>
           </div>
         ) : (

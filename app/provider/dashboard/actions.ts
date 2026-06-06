@@ -175,6 +175,61 @@ export async function acceptProviderOrderAction(formData: FormData) {
   redirect(`/provider/dashboard?accepted=${existingOrder.id}`);
 }
 
+/**
+ * Update the seller's business_name. Updates provider_profiles.business_name
+ * (the source of truth) and then cascade-syncs the denormalised copy on every
+ * listing they own — so the public marketplace cards reflect the new name
+ * immediately, without waiting for a per-listing edit (the previous behaviour
+ * called out in migration 013's comment).
+ */
+export async function updateProviderBusinessNameAction(formData: FormData) {
+  const { supabase, providerProfile } = await getApprovedProviderProfile();
+  const businessName = readString(formData, "business_name");
+
+  if (!businessName) {
+    redirectWithError("Business name can't be empty");
+  }
+  if (businessName.length > 120) {
+    redirectWithError("Business name must be 120 characters or fewer");
+  }
+  if (businessName === providerProfile.business_name) {
+    // No-op edit — nothing to write, no need to revalidate.
+    redirect("/provider/dashboard?tab=listings");
+  }
+
+  const { error: profileError } = await supabase
+    .from("provider_profiles")
+    .update({ business_name: businessName })
+    .eq("id", providerProfile.id);
+
+  if (profileError) {
+    redirectWithError("Unable to update business name");
+  }
+
+  // Cascade-sync the denormalised copy on every listing. RLS already
+  // restricts the provider to their own listings (the listings UPDATE policy
+  // gates on provider_id = current_profile_id-equivalent), so the WHERE
+  // clause is belt-and-braces.
+  const { error: listingsError } = await supabase
+    .from("listings")
+    .update({ business_name: businessName, updated_at: new Date().toISOString() })
+    .eq("provider_id", providerProfile.id);
+
+  if (listingsError) {
+    // The profile already moved — we can't roll it back without an RPC.
+    // Surface the partial-update so the seller knows their cards are stale
+    // and we can investigate from the log.
+    redirectWithError(
+      "Business name updated, but some listings may still show the old name. Refresh in a moment or contact support."
+    );
+  }
+
+  revalidatePath("/provider/dashboard");
+  revalidatePath("/listings");
+  revalidatePath("/");
+  redirect("/provider/dashboard?tab=listings&business_name_updated=1");
+}
+
 export async function createProviderListingAction(formData: FormData) {
   const { userId, supabase, providerProfile } = await getApprovedProviderProfile();
   const title = readString(formData, "title");

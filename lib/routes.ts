@@ -9,7 +9,10 @@ export function roleHomePath(role: AppRole) {
     case "admin":
       return "/admin/dashboard";
     case "provider":
-      return "/provider/status";
+      // Approved providers land here on sign-in; the dashboard itself
+      // renders an "Approval required" gate for pending/rejected
+      // providers that links them back to /provider/status.
+      return "/provider/dashboard";
     case "driver":
       return "/driver/status";
     case "buyer":

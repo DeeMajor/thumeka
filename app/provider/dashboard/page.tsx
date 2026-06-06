@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ClipboardList, Store } from "lucide-react";
 
+import { updateProviderBusinessNameAction } from "@/app/provider/dashboard/actions";
 import { CreateListingPanel } from "@/app/provider/dashboard/create-listing-panel";
 import { ProviderOrdersBoard } from "@/app/provider/dashboard/provider-orders-board";
 import { ListingImage } from "@/components/listing-image";
@@ -28,6 +29,7 @@ function resolveTab(value: string | undefined): ProviderTab {
 type ProviderDashboardPageProps = {
   searchParams: Promise<{
     accepted?: string;
+    business_name_updated?: string;
     error?: string;
     listing_created?: string;
     listing_deactivated?: string;
@@ -244,6 +246,14 @@ export default async function ProviderDashboardPage({
               Listing deleted.
             </div>
           ) : null}
+          {params.business_name_updated ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="provider-business-name-updated-message"
+            >
+              Business name updated. Your listings now show the new name.
+            </div>
+          ) : null}
           {params.error ? (
             <div
               className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
@@ -307,8 +317,40 @@ export default async function ProviderDashboardPage({
             orders={orders}
           />
         ) : (
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
-            <CreateListingPanel
+          <div className="space-y-4">
+            <form
+              action={updateProviderBusinessNameAction}
+              className="panel"
+              data-testid="provider-business-profile-form"
+            >
+              <h2 className="text-h3 text-ink">Business profile</h2>
+              <p className="mt-1 text-body-sm text-black/60">
+                This name shows on every listing card. Updating it here
+                re-syncs all of your existing listings.
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="block flex-1 space-y-1">
+                  <span className="label">Business / seller name</span>
+                  <input
+                    className="input"
+                    data-testid="provider-business-name-edit-input"
+                    defaultValue={providerProfile.business_name ?? ""}
+                    maxLength={120}
+                    name="business_name"
+                    required
+                  />
+                </label>
+                <button
+                  className="btn-primary sm:w-auto"
+                  data-testid="provider-business-name-save-button"
+                  type="submit"
+                >
+                  Save name
+                </button>
+              </div>
+            </form>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+              <CreateListingPanel
               categories={categories}
               defaultAddress={providerProfile.address}
               defaultSuburb={providerProfile.suburb}
@@ -372,6 +414,7 @@ export default async function ProviderDashboardPage({
                 )}
               </div>
             </div>
+          </div>
           </div>
         )}
       </section>
