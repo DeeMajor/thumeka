@@ -140,6 +140,7 @@ export async function createOrderRequestAction(formData: FormData) {
       delivery_commission_amount: quote.deliveryCommissionAmount,
       provider_earning: quote.providerEarning,
       driver_earning: quote.driverEarning,
+      payment_method: "payfast",
       payment_status: "not_requested"
     })
     .select("id")

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { OrderAcceptedEftEmail } from "@/emails/order-accepted-eft";
+import { OrderAcceptedPayEmail } from "@/emails/order-accepted-pay";
 import { requireRole } from "@/lib/auth";
 import type {
   OrderRow,
@@ -149,25 +149,23 @@ export async function acceptProviderOrderAction(formData: FormData) {
     note: "Provider accepted order"
   });
 
-  // Send EFT instructions to buyer
-  if (existingOrder.buyer_email && providerProfile.bank_account_number) {
+  // Send the Pay-now email to the buyer. PayFast handles the actual
+  // payment; we just need to land the buyer on their order with the
+  // Pay-now button visible.
+  if (existingOrder.buyer_email) {
     sendEmail({
       to: existingOrder.buyer_email,
-      subject: "Your order has been accepted — EFT payment required — Thumeka",
-      react: OrderAcceptedEftEmail({
+      subject: "Your order has been accepted — pay now — Thumeka",
+      react: OrderAcceptedPayEmail({
         buyerName: existingOrder.buyer_name ?? existingOrder.buyer_email,
         listingTitle: existingOrder.listing_id,
         buyerTotal: Number(acceptedOrder.buyer_total),
         providerName: providerProfile.business_name ?? "Your provider",
-        bankAccountName: providerProfile.bank_account_name ?? "",
-        bankName: providerProfile.bank_name ?? "",
-        bankAccountNumber: providerProfile.bank_account_number,
-        bankBranchCode: providerProfile.bank_branch_code ?? "",
         orderId: existingOrder.id,
         appUrl: getAppUrl(),
-        ordersUrl: `${getAppUrl()}/buyer/orders`,
+        payUrl: `${getAppUrl()}/buyer/orders?pay=${existingOrder.id}`,
       }),
-    }).catch((err: Error) => console.warn("[email] Order accepted EFT email failed:", err.message));
+    }).catch((err: Error) => console.warn("[email] Order accepted Pay email failed:", err.message));
   }
 
   revalidatePath("/provider/dashboard");

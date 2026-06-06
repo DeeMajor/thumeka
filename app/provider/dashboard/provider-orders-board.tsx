@@ -338,7 +338,9 @@ function OrderDetail({
             <input name="order_id" type="hidden" value={order.id} />
             <p className="rounded-lg border border-black/10 bg-white p-3 text-sm text-black/60">
               Delivery fee was calculated from the buyer&apos;s address at
-              checkout — accepting confirms the order at this total.
+              checkout — accepting confirms the order at this total. The
+              buyer will pay via PayFast immediately after; you&apos;ll see
+              the order confirmed automatically.
             </p>
             <button
               className="btn-primary w-full"
@@ -351,9 +353,13 @@ function OrderDetail({
         </Section>
       ) : null}
 
-      {eftInstructions ? (
-        <Section title="Payment instructions shared with buyer">
+      {order.payment_method === "eft" && eftInstructions ? (
+        <Section title="Payment instructions (legacy EFT)">
           <p className="rounded-lg border border-leaf/20 bg-mint p-3 text-sm text-leaf/90">
+            This is a legacy EFT order from before the PayFast cutover. The
+            buyer sees these instructions:
+          </p>
+          <p className="mt-2 rounded-lg border border-leaf/20 bg-mint p-3 text-sm text-leaf/90">
             {eftInstructions}
           </p>
         </Section>

@@ -9,6 +9,7 @@ import { DriverAssignedEmail } from "@/emails/driver-assigned";
 import { PaymentConfirmedEmail } from "@/emails/payment-confirmed";
 import { PayoutCreatedEmail } from "@/emails/payout-created";
 import { PayoutPaidEmail } from "@/emails/payout-paid";
+import { RefundProcessedEmail } from "@/emails/refund-processed";
 import { requireRole } from "@/lib/auth";
 import type {
   DriverProfileRow,
@@ -357,7 +358,15 @@ export async function rejectDriverAction(formData: FormData) {
   redirect(`/admin/dashboard?driver_rejected=${driverId}`);
 }
 
-export async function confirmEftPaymentAction(formData: FormData) {
+/**
+ * Legacy admin action — manual EFT confirmation. Kept so the operations
+ * team can clear any historical orders that still have
+ * `payment_method='eft'`. New orders run through the PayFast ITN
+ * webhook instead. The UI is hidden for `payment_method='payfast'`.
+ *
+ * @deprecated Will be removed once all legacy EFT orders are confirmed.
+ */
+export async function confirmLegacyEftPaymentAction(formData: FormData) {
   const { profile } = await requireRole(["admin"]);
   const orderId = readString(formData, "order_id");
   const paymentReference =
@@ -467,6 +476,121 @@ export async function confirmEftPaymentAction(formData: FormData) {
   revalidatePath("/admin/dashboard");
   revalidatePath("/buyer/orders");
   redirect(`/admin/dashboard?eft_confirmed=${existingOrder.id}`);
+}
+
+/**
+ * Refund a confirmed order.
+ *
+ * Important: this records the refund in our ledger only. The actual
+ * money still has to be refunded via the PayFast merchant dashboard
+ * (PayFast doesn't expose a self-serve refund API on the basic tier).
+ * The admin enters the PayFast refund reference into the form so the
+ * audit trail links the two.
+ */
+export async function refundOrderAction(formData: FormData) {
+  const { profile } = await requireRole(["admin"]);
+  const orderId = readString(formData, "order_id");
+  const paymentReference = readString(formData, "payment_reference");
+  const reason = readString(formData, "reason");
+
+  if (!orderId) {
+    redirectWithError("Order is required");
+  }
+  if (!paymentReference) {
+    redirectWithError(
+      "Enter the PayFast refund reference after processing the refund in the merchant dashboard."
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: orderData } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  const order = orderData as OrderRow | null;
+
+  if (!order) {
+    redirectWithError("Order was not found");
+  }
+  if (order.payment_status !== "confirmed") {
+    redirectWithError(
+      "Only confirmed orders can be refunded — current status: " +
+        order.payment_status
+    );
+  }
+
+  // Atomic guard: only refund if still confirmed (race vs another admin).
+  const { data: updatedRows, error: updateError } = await supabase
+    .from("orders")
+    .update({
+      payment_status: "refunded",
+      payment_reference: paymentReference
+    })
+    .eq("id", order.id)
+    .eq("payment_status", "confirmed")
+    .select("id");
+
+  if (updateError) {
+    redirectWithError("Unable to update order");
+  }
+  if (!updatedRows || updatedRows.length === 0) {
+    redirect(`/admin/dashboard?refunded=${order.id}`);
+  }
+
+  // Reversal ledger row. transaction_type='refund_manual' already exists in
+  // migration 001 — debit direction with the full buyer_total marks the
+  // platform's outflow.
+  await supabase.from("transactions").insert({
+    order_id: order.id,
+    transaction_type: "refund_manual",
+    amount: Number(order.buyer_total),
+    direction: "debit",
+    status: "recorded",
+    reference: paymentReference,
+    notes: reason || null,
+    created_by: profile.id
+  });
+
+  await supabase.from("order_status_events").insert({
+    order_id: order.id,
+    old_status: order.status,
+    new_status: order.status, // status doesn't change on refund — only payment_status
+    changed_by: profile.id,
+    note: `Refunded by admin (ref ${paymentReference})${reason ? `: ${reason}` : ""}`
+  });
+
+  await supabase.from("audit_logs").insert({
+    actor_user_id: profile.id,
+    actor_role: "admin",
+    action: "order_refunded",
+    entity_type: "order",
+    entity_id: order.id,
+    note: `PayFast refund ref ${paymentReference}${reason ? ` · ${reason}` : ""}`
+  });
+
+  if (order.buyer_email) {
+    sendEmail({
+      to: order.buyer_email,
+      subject: "Refund processed — Thumeka",
+      react: RefundProcessedEmail({
+        buyerName: order.buyer_name ?? order.buyer_email,
+        listingTitle: order.listing_id,
+        refundAmount: Number(order.buyer_total),
+        orderId: order.id,
+        reason: reason || null,
+        paymentReference,
+        appUrl: getAppUrl(),
+        ordersUrl: `${getAppUrl()}/buyer/orders`,
+      }),
+    }).catch((err: Error) =>
+      console.warn("[email] Refund processed email failed:", err.message)
+    );
+  }
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/buyer/orders");
+  redirect(`/admin/dashboard?refunded=${order.id}`);
 }
 
 export async function assignDriverAction(formData: FormData) {

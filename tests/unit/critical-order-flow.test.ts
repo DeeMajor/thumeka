@@ -57,22 +57,26 @@ describe("critical order flow rules", () => {
     ).toBe(false);
   });
 
-  it("allows buyer to see EFT instructions after provider accepts", () => {
+  it("flips order to awaiting_payment after provider accepts (PayFast era)", () => {
     const acceptedOrder = acceptProviderOrder(
       createCriticalOrderFixture(),
       "2026-05-25T08:00:00.000Z"
     );
 
+    // status enum kept for backwards compat; payment_status moved to the
+    // new PayFast value `awaiting_payment` (was `awaiting_buyer_eft`).
     expect(acceptedOrder.status).toBe("awaiting_buyer_eft");
-    expect(acceptedOrder.payment_status).toBe("awaiting_buyer_eft");
+    expect(acceptedOrder.payment_status).toBe("awaiting_payment");
     expect(acceptedOrder.delivery_fee).toBe(70);
     expect(acceptedOrder.buyer_total).toBe(320);
+    // Legacy EFT instructions panel only renders for legacy payment_status
+    // values now — new PayFast orders show the Pay-now button instead.
     expect(
       canBuyerSeeEftInstructions(
         acceptedOrder,
         criticalOrderSettings.eft_payment_instructions
       )
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("preserves the checkout-locked fee exactly — acceptance never recalculates", () => {
@@ -196,7 +200,7 @@ describe("critical order flow rules", () => {
         adminProfileId: testUsers.admin.profileId,
         paymentReference: "EFT-EARLY"
       })
-    ).toThrow("EFT can only be confirmed after provider acceptance");
+    ).toThrow("Payment can only be confirmed after provider acceptance");
   });
 
   it("rejects driver assignment before payment confirmation", () => {

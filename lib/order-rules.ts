@@ -22,11 +22,18 @@ export type OrderRuleStatus =
 
 export type PaymentStatus =
   | "not_requested"
-  | "awaiting_buyer_eft"
-  | "eft_submitted"
+  | "awaiting_payment"
+  | "payment_processing"
   | "confirmed"
   | "failed"
+  | "refunded"
+  // Legacy values kept so historical rows still parse; new flows never
+  // emit these.
+  | "awaiting_buyer_eft"
+  | "eft_submitted"
   | "refunded_manual";
+
+export type PaymentMethod = "eft" | "payfast";
 
 export type OrderForRules = {
   id: string;
@@ -220,6 +227,11 @@ export function canBuyerSeeEftInstructions(
  * Throws if the order isn't priced. There's no longer a fallback that
  * computes the fee from a provider-supplied distance — that path predated
  * server-side geocoding and has been retired.
+ *
+ * Post-PayFast (migration 017): the status is `awaiting_buyer_eft` for the
+ * order_status enum (kept for backwards compat) but the *payment_status*
+ * flips to `awaiting_payment` — that's what the buyer-orders UI reads to
+ * show the Pay-now button.
  */
 export function acceptProviderOrder(
   order: OrderForRules,
@@ -235,12 +247,24 @@ export function acceptProviderOrder(
   return {
     ...order,
     status: "awaiting_buyer_eft",
-    payment_status: "awaiting_buyer_eft",
+    payment_status: "awaiting_payment",
     accepted_at: acceptedAt
   };
 }
 
-export function confirmEftPayment({
+/**
+ * Confirm a buyer payment — gateway-agnostic.
+ *
+ * Called by the PayFast ITN webhook with `adminProfileId="system"` and
+ * the gateway's `pf_payment_id` as `paymentReference`, OR by the legacy
+ * admin "Confirm EFT" action for historical EFT orders.
+ *
+ * The accepted starting `payment_status` values cover both flows: the
+ * new `awaiting_payment` / `payment_processing` for PayFast and the
+ * legacy `awaiting_buyer_eft` / `eft_submitted` for EFT. Output is
+ * always `payment_status="confirmed"`, `status="payment_confirmed"`.
+ */
+export function confirmGatewayPayment({
   order,
   adminProfileId,
   paymentReference
@@ -249,8 +273,14 @@ export function confirmEftPayment({
   adminProfileId: string;
   paymentReference: string;
 }) {
-  if (!["awaiting_buyer_eft", "eft_submitted"].includes(order.payment_status)) {
-    throw new Error("EFT can only be confirmed after provider acceptance");
+  const acceptableStarts: PaymentStatus[] = [
+    "awaiting_payment",
+    "payment_processing",
+    "awaiting_buyer_eft",
+    "eft_submitted"
+  ];
+  if (!acceptableStarts.includes(order.payment_status)) {
+    throw new Error("Payment can only be confirmed after provider acceptance");
   }
 
   const paidOrder: OrderForRules = {
@@ -314,6 +344,14 @@ export function confirmEftPayment({
     transactions
   };
 }
+
+/**
+ * Backwards-compatible alias for `confirmGatewayPayment`. Used by the
+ * legacy admin "Confirm EFT" action and existing tests until they migrate.
+ *
+ * @deprecated Use `confirmGatewayPayment`.
+ */
+export const confirmEftPayment = confirmGatewayPayment;
 
 export function assignDriver(order: OrderForRules, driver: DriverForAssignment) {
   if (order.payment_status !== "confirmed") {

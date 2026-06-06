@@ -5,7 +5,8 @@ import {
   approveDriverAction,
   approveProviderAction,
   assignDriverAction,
-  confirmEftPaymentAction,
+  confirmLegacyEftPaymentAction,
+  refundOrderAction,
   createDriverPayoutAction,
   createProviderPayoutAction,
   markPayoutPaidAction,
@@ -852,10 +853,15 @@ export default async function AdminDashboardPage({
             <div className="mt-4 space-y-3" data-testid="admin-order-list">
               {operationalOrders.length ? (
                 operationalOrders.map((order) => {
-                  const canConfirmEft = [
-                    "awaiting_buyer_eft",
-                    "eft_submitted"
-                  ].includes(order.payment_status);
+                  // Legacy EFT confirm UI — only show for orders that were
+                  // placed before the PayFast cutover. New PayFast orders
+                  // confirm automatically via the ITN webhook.
+                  const canConfirmLegacyEft =
+                    order.payment_method === "eft" &&
+                    ["awaiting_buyer_eft", "eft_submitted"].includes(
+                      order.payment_status
+                    );
+                  const canRefund = order.payment_status === "confirmed";
                   const canAssignDriver =
                     order.payment_status === "confirmed" && !order.driver_id;
 
@@ -912,15 +918,17 @@ export default async function AdminDashboardPage({
                         testIdPrefix={`admin-order-${order.id.slice(0, 8)}-contacts`}
                       />
 
-                      {canConfirmEft ? (
+                      {canConfirmLegacyEft ? (
                         <form
-                          action={confirmEftPaymentAction}
+                          action={confirmLegacyEftPaymentAction}
                           className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"
                           data-testid="admin-confirm-eft-form"
                         >
                           <input name="order_id" type="hidden" value={order.id} />
                           <label className="space-y-1">
-                            <span className="label">Payment reference</span>
+                            <span className="label">
+                              Payment reference (legacy EFT)
+                            </span>
                             <input
                               className="input"
                               data-testid="admin-payment-reference-input"
@@ -934,8 +942,54 @@ export default async function AdminDashboardPage({
                             data-testid="admin-confirm-eft-button"
                             type="submit"
                           >
-                            Confirm EFT
+                            Confirm legacy EFT
                           </button>
+                        </form>
+                      ) : null}
+
+                      {canRefund ? (
+                        <form
+                          action={refundOrderAction}
+                          className="mt-4 rounded-lg border border-red-100 bg-red-50/40 p-3"
+                          data-testid="admin-refund-form"
+                        >
+                          <p className="text-caption font-semibold uppercase tracking-widest text-red-700">
+                            Refund this order
+                          </p>
+                          <p className="mt-1 text-caption text-red-700/80">
+                            Process the refund in the PayFast merchant
+                            dashboard first, then paste the refund reference
+                            here so the audit trail links the two.
+                          </p>
+                          <input name="order_id" type="hidden" value={order.id} />
+                          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                            <label className="space-y-1">
+                              <span className="label">PayFast refund ref</span>
+                              <input
+                                className="input"
+                                data-testid="admin-refund-reference-input"
+                                name="payment_reference"
+                                placeholder="e.g. PF-REF-12345"
+                                required
+                              />
+                            </label>
+                            <label className="space-y-1">
+                              <span className="label">Reason (optional)</span>
+                              <input
+                                className="input"
+                                data-testid="admin-refund-reason-input"
+                                name="reason"
+                                placeholder="e.g. buyer cancelled"
+                              />
+                            </label>
+                            <button
+                              className="self-end inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                              data-testid="admin-refund-button"
+                              type="submit"
+                            >
+                              Mark refunded
+                            </button>
+                          </div>
                         </form>
                       ) : null}
 

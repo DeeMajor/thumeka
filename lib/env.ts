@@ -67,6 +67,17 @@ export function getGoogleMapsApiKey() {
   return process.env.GOOGLE_MAPS_API_KEY || "";
 }
 
+/**
+ * Returns true when the PayFast credentials are configured well enough
+ * to build a checkout payload. Used by tests + dev to skip Pay-now flows
+ * when running without credentials.
+ */
+export function isPayFastConfigured() {
+  return Boolean(
+    process.env.PAYFAST_MERCHANT_ID && process.env.PAYFAST_MERCHANT_KEY
+  );
+}
+
 export function isSupabaseConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

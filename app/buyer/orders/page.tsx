@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
@@ -33,6 +33,9 @@ type BuyerOrdersPageProps = {
   searchParams: Promise<{
     created?: string;
     status?: string;
+    pay?: string;
+    paid?: string;
+    cancelled?: string;
   }>;
 };
 
@@ -110,7 +113,21 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
           </div>
           {params.created ? (
             <div className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf">
-              Order request created. The provider must accept before payment instructions are shown.
+              Order request created. The provider must accept before you can pay.
+            </div>
+          ) : null}
+          {params.paid ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="buyer-orders-paid-banner"
+            >
+              Payment received. Your order will appear here once confirmed —
+              this normally happens within seconds.
+            </div>
+          ) : null}
+          {params.cancelled ? (
+            <div className="rounded-md border border-maize/60 bg-maize/15 p-3 text-sm text-ink">
+              Payment cancelled. You can try again whenever you&apos;re ready.
             </div>
           ) : null}
         </div>
@@ -201,7 +218,66 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                   #{order.id.slice(0, 8)}
                 </p>
 
-                {/* EFT instructions */}
+                {/* Pay now — PayFast (new flow) */}
+                {order.payment_status === "awaiting_payment" ? (
+                  <div
+                    className="mt-4 rounded-lg border border-leaf/30 bg-mint p-3"
+                    data-testid="buyer-order-pay-now-panel"
+                  >
+                    <p className="text-body-sm font-semibold text-leaf">
+                      Ready to pay
+                    </p>
+                    <p className="mt-1 text-caption text-leaf/75">
+                      Pay by card, instant EFT, Zapper or SnapScan. You&apos;ll
+                      see the confirmation here within seconds.
+                    </p>
+                    <Link
+                      className="btn-primary mt-3 inline-flex items-center gap-2"
+                      data-testid="buyer-order-pay-now-link"
+                      href={`/buyer/orders/pay/${order.id}`}
+                    >
+                      <CreditCard aria-hidden="true" className="h-4 w-4" />
+                      Pay {formatMoney(order.buyer_total)} now
+                    </Link>
+                  </div>
+                ) : null}
+
+                {/* Payment processing — buyer redirected to PayFast, waiting
+                    for ITN. */}
+                {order.payment_status === "payment_processing" ? (
+                  <div
+                    className="mt-4 rounded-lg border border-sky/30 bg-sky/10 p-3"
+                    data-testid="buyer-order-processing-panel"
+                  >
+                    <p className="text-body-sm font-semibold text-sky">
+                      Payment processing…
+                    </p>
+                    <p className="mt-1 text-caption text-sky/80">
+                      Your bank is talking to PayFast. This usually takes a few
+                      seconds — refresh in a moment.
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* Refunded — admin processed a refund. */}
+                {order.payment_status === "refunded" ? (
+                  <div
+                    className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3"
+                    data-testid="buyer-order-refunded-panel"
+                  >
+                    <p className="text-body-sm font-semibold text-red-700">
+                      Refunded
+                    </p>
+                    <p className="mt-1 text-caption text-red-700/80">
+                      The funds are on their way back to you. Refunds take
+                      3–5 business days to land, depending on your bank.
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* Legacy EFT instructions — kept for orders from before
+                    the PayFast cutover. New orders use the Pay-now panel
+                    above. */}
                 {canBuyerSeeEftInstructions(
                   {
                     status: order.status as OrderRuleStatus,
@@ -213,7 +289,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                     className="mt-4 rounded-lg border border-leaf/20 bg-mint p-3 text-body-sm"
                     data-testid="buyer-order-eft-instructions"
                   >
-                    <p className="font-semibold text-leaf">Payment instructions</p>
+                    <p className="font-semibold text-leaf">Payment instructions (EFT)</p>
                     <p className="mt-1 text-leaf/80">{eftPaymentInstructions}</p>
                     <p className="mt-2 font-mono text-caption font-medium text-leaf/60">
                       Reference: {order.id.slice(0, 8)}

@@ -133,9 +133,11 @@ export type OrderRow = {
   delivery_commission_amount: string;
   provider_earning: string;
   driver_earning: string;
-  payment_method: "eft";
+  payment_method: "eft" | "payfast";
   payment_status: string;
   payment_reference: string | null;
+  gateway_payment_id: string | null;
+  gateway_session_id: string | null;
   provider_location_checked: boolean;
   provider_accept_lat: string | null;
   provider_accept_lng: string | null;
