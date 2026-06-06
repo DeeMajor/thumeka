@@ -7,13 +7,16 @@ import { acceptProviderOrderAction } from "@/app/provider/dashboard/actions";
 import { Drawer } from "@/components/drawer";
 import { EmptyState } from "@/components/empty-state";
 import { StatusPill } from "@/components/status-pill";
-import type { OrderRow } from "@/lib/database.types";
+import type { OrderItemRow, OrderRow } from "@/lib/database.types";
 import { formatMoney } from "@/lib/format";
 import { getProviderOrderBucket, type ProviderOrderBucket } from "@/lib/order-rules";
 
 type ProviderOrdersBoardProps = {
   orders: OrderRow[];
   eftInstructions: string | null;
+  /** Line items keyed by order_id. Pre-grouped server-side so the
+   *  drawer can render the per-line list without an extra round trip. */
+  orderItemsByOrderId?: Record<string, OrderItemRow[]>;
 };
 
 const GROUPS: { bucket: ProviderOrderBucket; label: string }[] = [
@@ -41,10 +44,14 @@ function formatDate(value: string | null | undefined) {
 
 export function ProviderOrdersBoard({
   orders,
-  eftInstructions
+  eftInstructions,
+  orderItemsByOrderId = {}
 }: ProviderOrdersBoardProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = orders.find((order) => order.id === selectedId) ?? null;
+  const selectedItems = selected
+    ? orderItemsByOrderId[selected.id] ?? []
+    : [];
 
   if (!orders.length) {
     return (
@@ -182,7 +189,11 @@ export function ProviderOrdersBoard({
         title={selected ? `Order ${selected.id.slice(0, 8)}` : "Order"}
       >
         {selected ? (
-          <OrderDetail eftInstructions={eftInstructions} order={selected} />
+          <OrderDetail
+            eftInstructions={eftInstructions}
+            items={selectedItems}
+            order={selected}
+          />
         ) : null}
       </Drawer>
     </>
@@ -227,12 +238,15 @@ function Section({
 
 function OrderDetail({
   order,
+  items,
   eftInstructions
 }: {
   order: OrderRow;
+  items: OrderItemRow[];
   eftInstructions: string | null;
 }) {
   const bucket = getProviderOrderBucket(order.status);
+  const isMultiItem = items.length > 1;
 
   return (
     <div className="space-y-1">
@@ -259,6 +273,21 @@ function OrderDetail({
             }
           />
           <DetailRow
+            label="WhatsApp"
+            value={
+              order.buyer_whatsapp ? (
+                <a
+                  className="text-leaf hover:underline"
+                  href={`https://wa.me/${order.buyer_whatsapp.replace(/[^\d]/g, "")}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {order.buyer_whatsapp}
+                </a>
+              ) : null
+            }
+          />
+          <DetailRow
             label="Email"
             value={
               order.buyer_email ? (
@@ -270,6 +299,35 @@ function OrderDetail({
           />
         </dl>
       </Section>
+
+      {isMultiItem ? (
+        <Section title="Items">
+          <dl
+            className="rounded-lg border border-black/10 bg-white p-3"
+            data-testid="provider-order-items"
+          >
+            {items.map((item) => (
+              <DetailRow
+                key={item.id}
+                label={
+                  item.quantity > 1
+                    ? `${item.listing_title} (${formatMoney(item.listing_price)} × ${item.quantity})`
+                    : item.listing_title
+                }
+                value={formatMoney(item.line_subtotal)}
+              />
+            ))}
+            <div className="mt-2 flex items-center justify-between gap-4 border-t border-black/10 pt-2">
+              <dt className="text-sm font-semibold text-ink">Subtotal</dt>
+              <dd className="text-sm font-semibold text-ink">
+                {formatMoney(
+                  items.reduce((sum, item) => sum + Number(item.line_subtotal), 0)
+                )}
+              </dd>
+            </div>
+          </dl>
+        </Section>
+      ) : null}
 
       <Section title="Delivery">
         <dl>
@@ -290,22 +348,36 @@ function OrderDetail({
 
       <Section title="Earnings">
         <dl className="rounded-lg border border-black/10 bg-white p-3">
-          <DetailRow
-            label="Listing price"
-            value={
-              order.quantity > 1
-                ? `${formatMoney(order.listing_price)} × ${order.quantity}`
-                : formatMoney(order.listing_price)
-            }
-          />
-          {order.quantity > 1 ? (
+          {isMultiItem ? (
             <DetailRow
-              label="Subtotal"
+              label="Items subtotal"
               value={formatMoney(
-                Number(order.listing_price) * order.quantity
+                items.reduce(
+                  (sum, item) => sum + Number(item.line_subtotal),
+                  0
+                )
               )}
             />
-          ) : null}
+          ) : (
+            <>
+              <DetailRow
+                label="Listing price"
+                value={
+                  order.quantity > 1
+                    ? `${formatMoney(order.listing_price)} × ${order.quantity}`
+                    : formatMoney(order.listing_price)
+                }
+              />
+              {order.quantity > 1 ? (
+                <DetailRow
+                  label="Subtotal"
+                  value={formatMoney(
+                    Number(order.listing_price) * order.quantity
+                  )}
+                />
+              ) : null}
+            </>
+          )}
           <DetailRow
             label="Delivery fee"
             value={formatMoney(order.delivery_fee)}

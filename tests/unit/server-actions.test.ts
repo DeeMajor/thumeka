@@ -117,17 +117,31 @@ function mockCheckoutClient(options: {
 }) {
   type QueryChain = {
     eq: ReturnType<typeof vi.fn>;
+    in: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
     maybeSingle: ReturnType<typeof vi.fn>;
     select: ReturnType<typeof vi.fn>;
+    then: ReturnType<typeof vi.fn>;
   };
 
   function makeQueryChain(data: unknown) {
     const q = {} as QueryChain;
     q.eq = vi.fn(() => q);
+    // For `listings.select('...').in('id', ids)` — the helper expects the
+    // promise to resolve to `{ data: rows[], error: null }`. The cart helper
+    // awaits the chain directly (no maybeSingle), so the chain itself acts
+    // as a thenable.
+    q.in = vi.fn(() => q);
     q.limit = vi.fn(() => q);
     q.select = vi.fn(() => q);
     q.maybeSingle = vi.fn(async () => ({ data: data ?? null, error: null }));
+    // Make the chain awaitable for the `.in(...)` path. Wraps the supplied
+    // data as an array if it's a single object (the helper fetches multiple
+    // listings).
+    q.then = vi.fn((onFulfilled: (value: unknown) => unknown) => {
+      const value = Array.isArray(data) ? data : data ? [data] : [];
+      return Promise.resolve(onFulfilled({ data: value, error: null }));
+    });
     return q;
   }
 
@@ -152,11 +166,20 @@ function mockCheckoutClient(options: {
       })
     })
   }));
+  const orderItemsInsert = vi.fn(async () => ({ error: null }));
+  // Rollback path — order delete when order_items insert fails. Tests don't
+  // exercise this; just need an awaitable result.
+  const orderDelete = vi.fn(() => ({
+    eq: vi.fn(async () => ({ error: null }))
+  }));
   const eventInsert = vi.fn(async () => ({ error: null }));
   const from = vi.fn((table: string) => {
     if (table === "listings") return listingQuery;
     if (table === "admin_settings") return settingsQuery;
-    if (table === "orders") return { insert: orderInsert };
+    if (table === "orders") {
+      return { insert: orderInsert, delete: orderDelete };
+    }
+    if (table === "order_items") return { insert: orderItemsInsert };
     if (table === "order_status_events") return { insert: eventInsert };
     if (table === "provider_profiles") return providerProfileQuery;
     if (table === "profiles") return profileQuery;
@@ -164,7 +187,14 @@ function mockCheckoutClient(options: {
   });
 
   mocks.createSupabaseServerClient.mockResolvedValue({ from });
-  return { eventInsert, from, listingQuery, orderInsert, settingsQuery };
+  return {
+    eventInsert,
+    from,
+    listingQuery,
+    orderInsert,
+    orderItemsInsert,
+    settingsQuery
+  };
 }
 
 describe("server action flow coverage", () => {
@@ -545,21 +575,42 @@ describe("server action flow coverage", () => {
       "NEXT_REDIRECT:/listings"
     );
 
-    mocks.requireRole.mockResolvedValueOnce({ profile: { email: "", full_name: null, id: "buyer", phone: null } });
-    await expect(createOrderRequestAction(form({ listing_id: "listing-1" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/checkout/listing-1?error=Name%2C%20phone%20and%20email%20are%20required"
+    mocks.requireRole.mockResolvedValueOnce({
+      profile: { email: "", full_name: null, id: "buyer", phone: null }
+    });
+    await expect(
+      createOrderRequestAction(form({ listing_id: "listing-1" }))
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/checkout/listing-1?error=Name%2C%20phone%20and%20WhatsApp%20are%20required."
     );
 
     mockCheckoutClient({ listing: null });
-    await expect(createOrderRequestAction(form({ listing_id: "listing-1" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/listings?error=Listing%20is%20not%20available"
-    );
+    await expect(
+      createOrderRequestAction(
+        form({
+          listing_id: "listing-1",
+          buyer_name: "Buyer",
+          buyer_phone: "0712345678",
+          buyer_whatsapp: "0712345678",
+          delivery_address: "1 Test Road",
+          suburb: "Berea"
+        })
+      )
+    ).rejects.toThrow(/no%20longer%20available/);
   });
 
   it("creates checkout orders priced with the delivery quote and status events", async () => {
     mocks.getDeliveryQuote.mockResolvedValue(deliveryQuoteFixture());
     const checkout = mockCheckoutClient({
-      listing: { id: "listing-1", listing_type: "product", price: "250", provider_id: "provider-1" },
+      listing: {
+        id: "listing-1",
+        listing_type: "product",
+        price: "250",
+        provider_id: "provider-1",
+        title: "Test Listing",
+        is_active: true,
+        admin_disabled: false
+      },
       order: { id: "order-1" },
       settings: null
     });
@@ -567,7 +618,7 @@ describe("server action flow coverage", () => {
     await expect(
       createOrderRequestAction(
         form({
-          buyer_email: "buyer@example.com",
+          buyer_whatsapp: "0712345678",
           buyer_name: "Buyer Test",
           buyer_phone: "0712345678",
           buyer_notes: " Leave at reception ",
@@ -590,6 +641,16 @@ describe("server action flow coverage", () => {
         status: "order_requested"
       })
     );
+    // Line items table populated for the single-listing buy-now case too.
+    expect(checkout.orderItemsInsert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        order_id: "order-1",
+        listing_id: "listing-1",
+        listing_title: "Test Listing",
+        quantity: 1,
+        position: 0
+      })
+    ]);
     expect(checkout.eventInsert).toHaveBeenCalledWith({
       changed_by: "buyer-profile",
       new_status: "order_requested",
@@ -608,7 +669,15 @@ describe("server action flow coverage", () => {
   it("redirects checkout insert failures", async () => {
     mocks.getDeliveryQuote.mockResolvedValue(deliveryQuoteFixture());
     mockCheckoutClient({
-      listing: { id: "listing-1", listing_type: "product", price: "250", provider_id: "provider-1" },
+      listing: {
+        id: "listing-1",
+        listing_type: "product",
+        price: "250",
+        provider_id: "provider-1",
+        title: "Test Listing",
+        is_active: true,
+        admin_disabled: false
+      },
       orderError: new Error("insert failed"),
       settings: { commission_percentage: 10 }
     });
@@ -616,7 +685,7 @@ describe("server action flow coverage", () => {
     await expect(
       createOrderRequestAction(
         form({
-          buyer_email: "b@example.com",
+          buyer_whatsapp: "0712345678",
           buyer_name: "Buyer",
           buyer_phone: "0712345678",
           delivery_address: "1 Test Road",
@@ -624,13 +693,21 @@ describe("server action flow coverage", () => {
           suburb: "Berea"
         })
       )
-    ).rejects.toThrow("NEXT_REDIRECT:/checkout/listing-1?error=Unable%20to%20create%20order%20request");
+    ).rejects.toThrow(/Unable%20to%20create%20order%20request/);
   });
 
   it("blocks checkout when no delivery quote can be produced", async () => {
     mocks.getDeliveryQuote.mockResolvedValue(null);
     const checkout = mockCheckoutClient({
-      listing: { id: "listing-1", listing_type: "product", price: "250", provider_id: "provider-1" },
+      listing: {
+        id: "listing-1",
+        listing_type: "product",
+        price: "250",
+        provider_id: "provider-1",
+        title: "Test Listing",
+        is_active: true,
+        admin_disabled: false
+      },
       order: { id: "order-1" },
       settings: null
     });
@@ -638,7 +715,7 @@ describe("server action flow coverage", () => {
     await expect(
       createOrderRequestAction(
         form({
-          buyer_email: "buyer@example.com",
+          buyer_whatsapp: "0712345678",
           buyer_name: "Buyer Test",
           buyer_phone: "0712345678",
           delivery_address: "1 Test Road",

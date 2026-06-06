@@ -84,10 +84,11 @@ export function CartView() {
     );
   }
 
-  const singleItem = items.length === 1;
-  const checkoutHref = singleItem
-    ? `/checkout/${items[0].listingId}?quantity=${items[0].quantity}`
-    : null;
+  // Multi-item checkout now ships — the cart always points at /checkout
+  // regardless of the number of items. The single-listing buy-now flow
+  // still lives at /checkout/[listingId], used by the listing-detail CTA
+  // for one-click buy without going through the cart.
+  const checkoutHref = "/checkout";
 
   return (
     <div className="bg-mist" data-testid="page-cart">
@@ -251,31 +252,14 @@ export function CartView() {
               </p>
             </dl>
 
-            {checkoutHref ? (
-              <Link
-                className="btn-primary mt-5 flex w-full items-center justify-center gap-2"
-                data-testid="cart-checkout-link"
-                href={checkoutHref}
-              >
-                Checkout
-                <ArrowRight aria-hidden="true" className="h-4 w-4" />
-              </Link>
-            ) : (
-              <>
-                <button
-                  aria-disabled="true"
-                  className="mt-5 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-black/10 bg-black/5 px-4 py-2 text-sm font-semibold text-black/40"
-                  data-testid="cart-checkout-disabled"
-                  type="button"
-                >
-                  Checkout
-                </button>
-                <p className="mt-2 text-caption text-black/55">
-                  Multi-item checkout is coming soon. For now, please checkout
-                  items one at a time from each product page.
-                </p>
-              </>
-            )}
+            <Link
+              className="btn-primary mt-5 flex w-full items-center justify-center gap-2"
+              data-testid="cart-checkout-link"
+              href={checkoutHref}
+            >
+              Checkout
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
 
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 text-caption font-semibold text-black/45 hover:text-red-700"

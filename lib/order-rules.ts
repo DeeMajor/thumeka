@@ -154,7 +154,8 @@ export function calculateOrderFinancials({
   deliveryFee = 0,
   commissionPercentage = 12,
   deliveryCommissionPercentage = DEFAULT_DELIVERY_COMMISSION_PERCENTAGE,
-  quantity = 1
+  quantity = 1,
+  lineSubtotalOverride
 }: {
   listingPrice: MoneyInput;
   deliveryFee?: MoneyInput;
@@ -163,12 +164,20 @@ export function calculateOrderFinancials({
   /** Units of the listing ordered. Defaults to 1 so existing call sites
    *  that haven't been updated keep their old behaviour. */
   quantity?: number;
+  /** When set, replaces `unitPrice × quantity`. Used by the multi-item
+   *  checkout path where the buyer's subtotal is the sum of N lines and
+   *  can't be expressed as a single price × qty. */
+  lineSubtotalOverride?: MoneyInput;
 }) {
   const unitPrice = asNumber(listingPrice);
   const qty = Number.isInteger(quantity) && quantity >= 1 ? quantity : 1;
-  // Line subtotal = unit price × qty. Commission and provider earning
-  // are computed off this; the buyer pays subtotal + delivery.
-  const lineSubtotal = roundMoney(unitPrice * qty);
+  // Line subtotal = unit price × qty (or the explicit override for
+  // multi-line orders). Commission and provider earning derive off this;
+  // the buyer pays subtotal + delivery.
+  const lineSubtotal =
+    lineSubtotalOverride !== undefined && lineSubtotalOverride !== null
+      ? roundMoney(asNumber(lineSubtotalOverride))
+      : roundMoney(unitPrice * qty);
   const delivery = roundMoney(asNumber(deliveryFee));
   const commission = calculateCommission(lineSubtotal, commissionPercentage);
   const deliveryCommissionPct = asNumber(
