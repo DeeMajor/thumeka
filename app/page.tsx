@@ -23,7 +23,31 @@ type HomePageProps = {
   searchParams: Promise<{ category?: string; q?: string }>;
 };
 
-async function getMarketplaceData(categoryName: string | undefined) {
+/**
+ * Sanitise a keyword for use inside a PostgREST `or()` filter string.
+ *
+ * PostgREST treats `,` as a list separator and `(` / `)` for grouping inside
+ * `or()`, so a search like `coffee, tea` or `pizza (large)` would silently
+ * break the filter into garbage. `%` is a LIKE wildcard — letting it through
+ * lets a user type `%` and match everything, which is harmless but useless.
+ * `\` would be interpreted as an escape sequence.
+ *
+ * Strip those characters, collapse runs of whitespace, trim, and cap the
+ * length so we don't ship a 5KB filter string to Postgres.
+ */
+function sanitiseSearchKeyword(raw: string | undefined): string {
+  if (!raw) return "";
+  return raw
+    .replace(/[%,()\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+async function getMarketplaceData(
+  categoryName: string | undefined,
+  searchKeyword: string | undefined
+) {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: categories } = await supabase
@@ -52,6 +76,17 @@ async function getMarketplaceData(categoryName: string | undefined) {
       listingsQuery = listingsQuery.eq("category_id", matchedCategory.id);
     }
 
+    const safeKeyword = sanitiseSearchKeyword(searchKeyword);
+    if (safeKeyword) {
+      // Substring match across the most natural-language fields a buyer might
+      // search by. Suburb is intentionally excluded — we treat location as a
+      // distinct filter dimension, not a keyword. Categories aren't searched
+      // here either; the sidebar already filters by them.
+      listingsQuery = listingsQuery.or(
+        `title.ilike.%${safeKeyword}%,description.ilike.%${safeKeyword}%,business_name.ilike.%${safeKeyword}%`
+      );
+    }
+
     const { data: listings } = await listingsQuery;
 
     return {
@@ -73,9 +108,10 @@ async function getMarketplaceData(categoryName: string | undefined) {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const activeCategory = params.category;
+  const activeKeyword = params.q?.trim() || undefined;
   const [{ listings, categories, matchedCategory, configured }, profile] =
     await Promise.all([
-      getMarketplaceData(activeCategory),
+      getMarketplaceData(activeCategory, activeKeyword),
       getCurrentProfile().catch(() => null)
     ]);
 
@@ -127,11 +163,42 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               className="text-h1 text-ink"
               data-testid="home-browse-heading"
             >
-              Browse approved listings
+              {activeKeyword ? "Search results" : "Browse approved listings"}
             </h2>
-            {matchedCategory ? (
-              <p className="mt-1 text-body-sm text-black/55">
-                Filtered by {matchedCategory.name}
+            {activeKeyword || matchedCategory ? (
+              <p
+                className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-black/55"
+                data-testid="home-active-filters"
+              >
+                {activeKeyword ? (
+                  <span data-testid="home-active-keyword">
+                    {listings.length} {listings.length === 1 ? "match" : "matches"} for{" "}
+                    <span className="font-semibold text-ink">
+                      &ldquo;{activeKeyword}&rdquo;
+                    </span>
+                  </span>
+                ) : null}
+                {activeKeyword && matchedCategory ? (
+                  <span aria-hidden="true">·</span>
+                ) : null}
+                {matchedCategory ? (
+                  <span>
+                    in <span className="font-semibold text-ink">{matchedCategory.name}</span>
+                  </span>
+                ) : null}
+                {activeKeyword ? (
+                  <Link
+                    className="font-semibold text-leaf hover:underline"
+                    data-testid="home-clear-search-link"
+                    href={
+                      matchedCategory
+                        ? `/?category=${encodeURIComponent(matchedCategory.name)}`
+                        : "/"
+                    }
+                  >
+                    Clear search
+                  </Link>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -349,11 +416,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="mt-5">
                 <EmptyState
                   body={
-                    matchedCategory
-                      ? `No live listings in ${matchedCategory.name} yet. Try another category, or check back soon.`
-                      : "We're onboarding our first sellers right now. Check back soon — or sign up as a provider to list yours."
+                    activeKeyword
+                      ? `Nothing matches "${activeKeyword}"${
+                          matchedCategory ? ` in ${matchedCategory.name}` : ""
+                        }. Try fewer words or browse a different category.`
+                      : matchedCategory
+                        ? `No live listings in ${matchedCategory.name} yet. Try another category, or check back soon.`
+                        : "We're onboarding our first sellers right now. Check back soon — or sign up as a provider to list yours."
                   }
-                  title="No live listings yet"
+                  title={activeKeyword ? "No matches" : "No live listings yet"}
                 />
               </div>
             )}
