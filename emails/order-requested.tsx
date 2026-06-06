@@ -11,6 +11,12 @@ export type OrderRequestedEmailProps = {
   buyerEmail: string;
   listingTitle: string;
   listingPrice: number;
+  /** Units ordered. Defaults to 1 — older order rows pre-dating
+   *  migration 016 won't pass this. */
+  quantity?: number;
+  /** Already qty-multiplied subtotal (listingPrice × quantity).
+   *  Pre-computed at the call site so the email doesn't have to. */
+  lineSubtotal?: number;
   deliveryAddress: string | null;
   suburb: string | null;
   buyerNotes: string | null;
@@ -38,6 +44,8 @@ export function OrderRequestedEmail({
   buyerEmail,
   listingTitle,
   listingPrice,
+  quantity = 1,
+  lineSubtotal,
   deliveryAddress,
   suburb,
   buyerNotes,
@@ -47,6 +55,7 @@ export function OrderRequestedEmail({
   appUrl,
   dashboardUrl,
 }: OrderRequestedEmailProps) {
+  const subtotal = lineSubtotal ?? listingPrice * quantity;
   return (
     <EmailBase preview={`New order request — ${APP_NAME}`} appUrl={appUrl}>
       <h1 style={styles.heading}>New order request 📦</h1>
@@ -59,7 +68,17 @@ export function OrderRequestedEmail({
       <hr style={styles.divider} />
       <p style={{ ...styles.muted, fontWeight: "600", marginBottom: "8px" }}>Order details</p>
       <InfoRow label="Listing" value={listingTitle} />
-      <InfoRow label="Price" value={formatMoney(listingPrice)} />
+      {quantity > 1 ? (
+        <>
+          <InfoRow label="Quantity" value={`${quantity}`} />
+          <InfoRow
+            label="Price"
+            value={`${formatMoney(listingPrice)} × ${quantity} = ${formatMoney(subtotal)}`}
+          />
+        </>
+      ) : (
+        <InfoRow label="Price" value={formatMoney(listingPrice)} />
+      )}
       <InfoRow label="Order ref" value={orderId.slice(0, 8).toUpperCase()} />
 
       <hr style={styles.divider} />

@@ -71,3 +71,81 @@ describe("calculateOrderFinancials — delivery fee split", () => {
     expect(result.driverEarning + result.deliveryCommissionAmount).toBe(33.33);
   });
 });
+
+describe("calculateOrderFinancials — quantity", () => {
+  it("defaults to quantity 1 when the arg is omitted", () => {
+    // Same numbers as the canonical single-unit case above — proves the
+    // default keeps the existing semantics for callers that haven't been
+    // updated yet.
+    const result = calculateOrderFinancials({
+      listingPrice: 250,
+      deliveryFee: 70
+    });
+
+    expect(result.quantity).toBe(1);
+    expect(result.lineSubtotal).toBe(250);
+    expect(result.commissionAmount).toBe(30);
+    expect(result.providerEarning).toBe(220);
+    expect(result.buyerTotal).toBe(320);
+  });
+
+  it("multiplies the listing side of the order by quantity", () => {
+    // 3 × R200 = R600 subtotal. 12% of R600 = R72 commission. Provider keeps
+    // R528. Delivery (R70) is per-trip — qty doesn't change it. Buyer pays
+    // R600 + R70 = R670.
+    const result = calculateOrderFinancials({
+      listingPrice: 200,
+      deliveryFee: 70,
+      quantity: 3
+    });
+
+    expect(result.listingPrice).toBe(200);
+    expect(result.quantity).toBe(3);
+    expect(result.lineSubtotal).toBe(600);
+    expect(result.commissionAmount).toBe(72);
+    expect(result.providerEarning).toBe(528);
+    expect(result.deliveryFee).toBe(70);
+    expect(result.driverEarning).toBe(64.4);
+    expect(result.buyerTotal).toBe(670);
+  });
+
+  it("handles a larger quantity without drifting on rounding", () => {
+    // 5 × R33.33 = R166.65, 12% = R19.998 → R20.00; provider keeps R146.65.
+    const result = calculateOrderFinancials({
+      listingPrice: 33.33,
+      deliveryFee: 70,
+      quantity: 5
+    });
+
+    expect(result.lineSubtotal).toBe(166.65);
+    expect(result.commissionAmount).toBe(20);
+    expect(result.providerEarning).toBe(146.65);
+    expect(result.buyerTotal).toBe(236.65);
+  });
+
+  it("falls back to quantity 1 on garbage input (non-integer, zero, negative)", () => {
+    const float = calculateOrderFinancials({
+      listingPrice: 250,
+      deliveryFee: 70,
+      // @ts-expect-error — runtime safety check for callers that don't have TS
+      quantity: 2.5
+    });
+    const zero = calculateOrderFinancials({
+      listingPrice: 250,
+      deliveryFee: 70,
+      quantity: 0
+    });
+    const negative = calculateOrderFinancials({
+      listingPrice: 250,
+      deliveryFee: 70,
+      quantity: -3
+    });
+
+    expect(float.quantity).toBe(1);
+    expect(zero.quantity).toBe(1);
+    expect(negative.quantity).toBe(1);
+    expect(float.lineSubtotal).toBe(250);
+    expect(zero.lineSubtotal).toBe(250);
+    expect(negative.lineSubtotal).toBe(250);
+  });
+});

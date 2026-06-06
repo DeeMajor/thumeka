@@ -15,8 +15,25 @@ type CheckoutPageProps = {
   }>;
   searchParams: Promise<{
     error?: string;
+    quantity?: string;
   }>;
 };
+
+/**
+ * Parse and clamp the `?quantity=N` URL param.
+ *
+ * Defaults to 1 so the legacy listing-detail "Checkout" link
+ * (which doesn't pass a qty) keeps working as "buy one". Anything
+ * non-integer, ≤ 0, or > 99 is treated as 1 — the cart UI clamps to 99
+ * client-side, and the action re-validates on submit.
+ */
+function parseQuantity(raw: string | undefined): number {
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+  if (parsed > 99) return 99;
+  return parsed;
+}
 
 async function getListing(listingId: string) {
   const supabase = await createSupabaseServerClient();
@@ -37,6 +54,7 @@ export default async function CheckoutPage({
 }: CheckoutPageProps) {
   const { listingId } = await params;
   const query = await searchParams;
+  const quantity = parseQuantity(query.quantity);
   const [{ profile }, listing] = await Promise.all([
     requireRole(["buyer"]),
     getListing(listingId)
@@ -77,9 +95,25 @@ export default async function CheckoutPage({
           </div>
         ) : null}
 
-        <div className="mb-4 rounded-lg border border-black/10 bg-white p-4">
+        <div
+          className="mb-4 rounded-lg border border-black/10 bg-white p-4"
+          data-testid="checkout-listing-summary"
+        >
           <h2 className="font-semibold">{listing.title}</h2>
-          <p className="mt-1 text-sm text-black/60">{formatMoney(listing.price)}</p>
+          <p className="mt-1 text-sm text-black/60">
+            {formatMoney(listing.price)}
+            {quantity > 1 ? (
+              <>
+                {" × "}
+                <span
+                  className="font-semibold text-ink"
+                  data-testid="checkout-quantity-display"
+                >
+                  {quantity}
+                </span>
+              </>
+            ) : null}
+          </p>
         </div>
 
         <CheckoutForm
@@ -88,6 +122,7 @@ export default async function CheckoutPage({
           defaultPhone={profile.phone ?? ""}
           listingId={listing.id}
           listingPrice={listing.price}
+          quantity={quantity}
         />
       </div>
     </div>

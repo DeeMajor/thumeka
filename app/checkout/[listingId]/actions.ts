@@ -24,6 +24,22 @@ function readFiniteNumber(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * Read + validate the quantity from FormData. Defaults to 1 and clamps
+ * to [1, 99] — the upper bound mirrors `orders_quantity_max` from
+ * migration 016. Anything non-integer (e.g. "garbage", "2.5") falls
+ * back to 1 silently rather than erroring; the cart + checkout page
+ * both clamp client-side too.
+ */
+function readQuantity(formData: FormData): number {
+  const raw = readString(formData, "quantity");
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+  if (parsed > 99) return 99;
+  return parsed;
+}
+
 export async function createOrderRequestAction(formData: FormData) {
   const { profile } = await requireRole(["buyer"]);
   const listingId = readString(formData, "listing_id");
@@ -40,6 +56,7 @@ export async function createOrderRequestAction(formData: FormData) {
   const buyerNotes = readString(formData, "buyer_notes");
   const requestedDate = readString(formData, "requested_date") || null;
   const requestedTime = readString(formData, "requested_time") || null;
+  const quantity = readQuantity(formData);
 
   if (!buyerName || !buyerPhone || !buyerEmail) {
     redirect(`/checkout/${listingId}?error=Name%2C%20phone%20and%20email%20are%20required`);
@@ -81,6 +98,7 @@ export async function createOrderRequestAction(formData: FormData) {
     listingId: listing.id,
     address: deliveryAddress,
     suburb,
+    quantity,
     dest
   });
 
@@ -111,6 +129,7 @@ export async function createOrderRequestAction(formData: FormData) {
       requested_date: requestedDate,
       requested_time: requestedTime,
       listing_price: quote.listingPrice,
+      quantity: quote.quantity,
       delivery_distance_km: quote.distanceKm,
       delivery_base_fee: quote.baseFee,
       delivery_price_per_km: quote.pricePerKm,
@@ -165,6 +184,8 @@ export async function createOrderRequestAction(formData: FormData) {
           buyerEmail: buyerEmail,
           listingTitle: (listing as { title?: string }).title ?? listing.id,
           listingPrice: quote.listingPrice,
+          quantity: quote.quantity,
+          lineSubtotal: quote.lineSubtotal,
           deliveryAddress: deliveryAddress || null,
           suburb: suburb || null,
           buyerNotes: buyerNotes || null,

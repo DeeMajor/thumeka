@@ -122,6 +122,7 @@ export type OrderRow = {
   requested_date: string | null;
   requested_time: string | null;
   listing_price: string;
+  quantity: number;
   delivery_distance_km: string | null;
   delivery_base_fee: string | null;
   delivery_price_per_km: string | null;

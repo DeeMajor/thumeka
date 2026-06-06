@@ -12,16 +12,18 @@ type CheckoutFormProps = {
   defaultName: string;
   defaultPhone: string;
   defaultEmail: string;
+  quantity: number;
 };
 
-type Quote = { deliveryFee: number; buyerTotal: number };
+type Quote = { deliveryFee: number; buyerTotal: number; lineSubtotal: number };
 
 export function CheckoutForm({
   listingId,
   listingPrice,
   defaultName,
   defaultPhone,
-  defaultEmail
+  defaultEmail,
+  quantity
 }: CheckoutFormProps) {
   const [address, setAddress] = useState("");
   const [suburb, setSuburb] = useState("");
@@ -67,6 +69,7 @@ export function CheckoutForm({
           listingId,
           address: effectiveAddress,
           suburb: effectiveSuburb,
+          quantity,
           lat: override?.lat,
           lng: override?.lng
         })
@@ -80,7 +83,11 @@ export function CheckoutForm({
         return;
       }
 
-      setQuote({ deliveryFee: data.deliveryFee, buyerTotal: data.buyerTotal });
+      setQuote({
+        deliveryFee: data.deliveryFee,
+        buyerTotal: data.buyerTotal,
+        lineSubtotal: data.lineSubtotal
+      });
       setQuotedKey(`${effectiveAddress.trim()}|${effectiveSuburb.trim()}`);
     } catch {
       setQuote(null);
@@ -94,6 +101,7 @@ export function CheckoutForm({
   return (
     <form action={createOrderRequestAction} className="panel space-y-4" data-testid="checkout-form">
       <input name="listing_id" type="hidden" value={listingId} />
+      <input name="quantity" type="hidden" value={quantity} />
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="label">Name</span>
@@ -194,8 +202,17 @@ export function CheckoutForm({
         {quoteValid && quote ? (
           <dl className="mt-3 space-y-1 border-t border-black/10 pt-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-black/55">Item</dt>
-              <dd className="font-medium">{formatMoney(listingPrice)}</dd>
+              <dt className="text-black/55">
+                Item
+                {quantity > 1 ? (
+                  <span className="ml-1 text-caption text-black/45">
+                    ({formatMoney(listingPrice)} × {quantity})
+                  </span>
+                ) : null}
+              </dt>
+              <dd className="font-medium" data-testid="checkout-line-subtotal">
+                {formatMoney(quote.lineSubtotal)}
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-black/55">Delivery</dt>

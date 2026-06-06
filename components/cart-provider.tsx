@@ -9,45 +9,74 @@ import {
   useState
 } from "react";
 
-import type { CartItem } from "@/lib/cart-types";
+import { CART_QUANTITY_MAX, type CartItem } from "@/lib/cart-types";
 
-const STORAGE_KEY = "thumeka.cart.v1";
+const STORAGE_KEY = "thumeka.cart.v2";
 
-type AddResult = "added" | "already" | "skipped";
+type AddResult = "added" | "skipped";
+
+/** Shape a caller hands to addItem — quantity is owned by the provider. */
+export type CartItemInput = Omit<CartItem, "quantity">;
 
 type CartContextValue = {
   items: CartItem[];
   /** Provider/business of the cart's current items, if any. */
   providerId: string | null;
   businessName: string | null;
+  /** Total units across all lines — `sum(item.quantity)`. */
   count: number;
   total: number;
   /** Has the localStorage hydration finished? Use to avoid SSR/CSR flash. */
   ready: boolean;
   isInCart: (listingId: string) => boolean;
+  /** Returns the line's current quantity, or 0 if absent. */
+  getQuantity: (listingId: string) => number;
   /**
-   * Add an item to the cart.
+   * Add an item to the cart, or increment its quantity if already present.
    *
-   *  - returns `"already"` if the listing is already in the cart
-   *  - returns `"added"` if added successfully
+   *  - returns `"added"` if the line was added or its quantity bumped
    *  - returns `"skipped"` if the cart had items from a different seller
-   *    and the user declined to clear it (via the `onConflict` callback)
+   *    and the user declined to clear it (via the `onConflict` callback),
+   *    or if the line is already at CART_QUANTITY_MAX
    *
    * `onConflict` is async-friendly — pass an async function that resolves
    * to `true` to clear the cart and add the new item. If omitted the
    * conflict is always skipped.
    */
   addItem: (
-    item: CartItem,
+    item: CartItemInput,
     options?: {
       onConflict?: (currentBusiness: string) => Promise<boolean> | boolean;
     }
   ) => Promise<AddResult>;
+  /**
+   * Smart decrement used by the cart stepper "−". Drops the quantity by 1;
+   * if the line was at 1, removes the line entirely.
+   */
+  decrementItem: (listingId: string) => void;
+  /**
+   * Set the line's quantity directly. Clamped to [1, CART_QUANTITY_MAX].
+   * If the line isn't in the cart, this is a no-op. To remove, call
+   * `removeItem` instead.
+   */
+  setItemQuantity: (listingId: string, quantity: number) => void;
+  /** Remove the entire line regardless of its quantity. */
   removeItem: (listingId: string) => void;
   clear: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
+
+function isCartItem(entry: unknown): entry is CartItem {
+  if (entry === null || typeof entry !== "object") return false;
+  const record = entry as Record<string, unknown>;
+  return (
+    typeof record.listingId === "string" &&
+    typeof record.providerId === "string" &&
+    typeof record.quantity === "number" &&
+    record.quantity >= 1
+  );
+}
 
 function readStoredCart(): CartItem[] {
   if (typeof window === "undefined") return [];
@@ -56,13 +85,7 @@ function readStoredCart(): CartItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is CartItem =>
-        entry !== null &&
-        typeof entry === "object" &&
-        typeof entry.listingId === "string" &&
-        typeof entry.providerId === "string"
-    );
+    return parsed.filter(isCartItem);
   } catch {
     return [];
   }
@@ -76,6 +99,14 @@ function writeStoredCart(items: CartItem[]) {
     // Quota or storage disabled — swallow; cart state will just be
     // session-local until the next interaction.
   }
+}
+
+function clampQuantity(n: number): number {
+  if (!Number.isFinite(n)) return 1;
+  const intN = Math.floor(n);
+  if (intN < 1) return 1;
+  if (intN > CART_QUANTITY_MAX) return CART_QUANTITY_MAX;
+  return intN;
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -106,9 +137,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const providerId = items[0]?.providerId ?? null;
   const businessName = items[0]?.businessName ?? null;
-  const count = items.length;
+  const count = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  );
   const total = useMemo(
-    () => items.reduce((sum, item) => sum + Number(item.price ?? 0), 0),
+    () =>
+      items.reduce(
+        (sum, item) => sum + Number(item.price ?? 0) * item.quantity,
+        0
+      ),
     [items]
   );
 
@@ -117,10 +155,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [items]
   );
 
+  const getQuantity = useCallback(
+    (listingId: string) =>
+      items.find((item) => item.listingId === listingId)?.quantity ?? 0,
+    [items]
+  );
+
   const addItem = useCallback<CartContextValue["addItem"]>(
     async (item, options) => {
-      if (items.some((existing) => existing.listingId === item.listingId)) {
-        return "already";
+      const existing = items.find(
+        (existingItem) => existingItem.listingId === item.listingId
+      );
+      if (existing) {
+        if (existing.quantity >= CART_QUANTITY_MAX) {
+          return "skipped";
+        }
+        setItems((current) =>
+          current.map((entry) =>
+            entry.listingId === item.listingId
+              ? { ...entry, quantity: entry.quantity + 1 }
+              : entry
+          )
+        );
+        return "added";
       }
 
       if (providerId && providerId !== item.providerId) {
@@ -128,14 +185,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           ? await options.onConflict(businessName ?? "another seller")
           : false;
         if (!shouldReplace) return "skipped";
-        setItems([item]);
+        setItems([{ ...item, quantity: 1 }]);
         return "added";
       }
 
-      setItems((current) => [...current, item]);
+      setItems((current) => [...current, { ...item, quantity: 1 }]);
       return "added";
     },
     [items, providerId, businessName]
+  );
+
+  const decrementItem = useCallback((listingId: string) => {
+    setItems((current) => {
+      const next: CartItem[] = [];
+      for (const entry of current) {
+        if (entry.listingId !== listingId) {
+          next.push(entry);
+          continue;
+        }
+        if (entry.quantity > 1) {
+          next.push({ ...entry, quantity: entry.quantity - 1 });
+        }
+        // else: drop the line entirely (quantity was 1)
+      }
+      return next;
+    });
+  }, []);
+
+  const setItemQuantity = useCallback(
+    (listingId: string, quantity: number) => {
+      const clamped = clampQuantity(quantity);
+      setItems((current) =>
+        current.map((entry) =>
+          entry.listingId === listingId
+            ? { ...entry, quantity: clamped }
+            : entry
+        )
+      );
+    },
+    []
   );
 
   const removeItem = useCallback((listingId: string) => {
@@ -155,11 +243,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       total,
       ready,
       isInCart,
+      getQuantity,
       addItem,
+      decrementItem,
+      setItemQuantity,
       removeItem,
       clear
     }),
-    [items, providerId, businessName, count, total, ready, isInCart, addItem, removeItem, clear]
+    [
+      items,
+      providerId,
+      businessName,
+      count,
+      total,
+      ready,
+      isInCart,
+      getQuantity,
+      addItem,
+      decrementItem,
+      setItemQuantity,
+      removeItem,
+      clear
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -114,8 +114,16 @@ export function ProviderOrdersBoard({
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <p className="text-sm text-black/50">
+                          <p className="flex items-center gap-2 text-sm text-black/50">
                             Order {order.id.slice(0, 8)}
+                            {order.quantity > 1 ? (
+                              <span
+                                className="inline-flex items-center rounded-full bg-sunset/15 px-2 py-0.5 text-caption font-bold uppercase tracking-widest text-sunset"
+                                data-testid="provider-order-quantity-badge"
+                              >
+                                × {order.quantity}
+                              </span>
+                            ) : null}
                           </p>
                           <p className="mt-1 font-semibold">{order.buyer_name}</p>
                           <p className="mt-1 text-sm text-black/60">
@@ -282,7 +290,22 @@ function OrderDetail({
 
       <Section title="Earnings">
         <dl className="rounded-lg border border-black/10 bg-white p-3">
-          <DetailRow label="Listing price" value={formatMoney(order.listing_price)} />
+          <DetailRow
+            label="Listing price"
+            value={
+              order.quantity > 1
+                ? `${formatMoney(order.listing_price)} × ${order.quantity}`
+                : formatMoney(order.listing_price)
+            }
+          />
+          {order.quantity > 1 ? (
+            <DetailRow
+              label="Subtotal"
+              value={formatMoney(
+                Number(order.listing_price) * order.quantity
+              )}
+            />
+          ) : null}
           <DetailRow
             label="Delivery fee"
             value={formatMoney(order.delivery_fee)}

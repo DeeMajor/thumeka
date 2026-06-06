@@ -19,4 +19,13 @@ export type CartItem = {
   price: number;
   imageUrl: string | null;
   businessName: string | null;
+  /**
+   * Units of this listing in the cart. Clamped to [1, 99] by the cart
+   * provider — the upper bound is also enforced as a CHECK constraint
+   * on `orders.quantity` (migration 016).
+   */
+  quantity: number;
 };
+
+/** Per-line + global cap on quantity. Mirrored in migration 016. */
+export const CART_QUANTITY_MAX = 99;

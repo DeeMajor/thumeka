@@ -17,7 +17,12 @@ export type DeliveryQuote = {
   distanceKm: number;
   deliveryFee: number;
   buyerTotal: number;
+  /** Unit price snapshot — for `orders.listing_price`. */
   listingPrice: number;
+  /** Units of the listing being quoted. */
+  quantity: number;
+  /** `listingPrice * quantity`. The buyer's subtotal before delivery. */
+  lineSubtotal: number;
   baseFee: number;
   pricePerKm: number;
   commissionPercentage: number;
@@ -34,6 +39,9 @@ type QuoteInput = {
   listingId: string;
   address: string;
   suburb?: string;
+  /** Units of the listing being ordered. Defaults to 1. Clamped to
+   *  [1, 99] — anything else is treated as 1 (caller validates upstream). */
+  quantity?: number;
   /** Pre-resolved destination coordinates (e.g. from Places Autocomplete). When
    * present and valid, the server skips its own geocoding call and uses them
    * directly. */
@@ -53,6 +61,7 @@ export async function getDeliveryQuote({
   listingId,
   address,
   suburb,
+  quantity,
   dest: clientDest
 }: QuoteInput): Promise<DeliveryQuote | null> {
   const trimmedAddress = address.trim();
@@ -109,7 +118,8 @@ export async function getDeliveryQuote({
     listingPrice: listing.price,
     deliveryFee,
     commissionPercentage,
-    deliveryCommissionPercentage
+    deliveryCommissionPercentage,
+    quantity
   });
 
   return {
@@ -117,6 +127,8 @@ export async function getDeliveryQuote({
     deliveryFee: financials.deliveryFee,
     buyerTotal: financials.buyerTotal,
     listingPrice: financials.listingPrice,
+    quantity: financials.quantity,
+    lineSubtotal: financials.lineSubtotal,
     baseFee,
     pricePerKm,
     commissionPercentage: financials.commissionPercentage,

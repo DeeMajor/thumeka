@@ -153,16 +153,24 @@ export function calculateOrderFinancials({
   listingPrice,
   deliveryFee = 0,
   commissionPercentage = 12,
-  deliveryCommissionPercentage = DEFAULT_DELIVERY_COMMISSION_PERCENTAGE
+  deliveryCommissionPercentage = DEFAULT_DELIVERY_COMMISSION_PERCENTAGE,
+  quantity = 1
 }: {
   listingPrice: MoneyInput;
   deliveryFee?: MoneyInput;
   commissionPercentage?: MoneyInput;
   deliveryCommissionPercentage?: MoneyInput;
+  /** Units of the listing ordered. Defaults to 1 so existing call sites
+   *  that haven't been updated keep their old behaviour. */
+  quantity?: number;
 }) {
-  const price = asNumber(listingPrice);
+  const unitPrice = asNumber(listingPrice);
+  const qty = Number.isInteger(quantity) && quantity >= 1 ? quantity : 1;
+  // Line subtotal = unit price × qty. Commission and provider earning
+  // are computed off this; the buyer pays subtotal + delivery.
+  const lineSubtotal = roundMoney(unitPrice * qty);
   const delivery = roundMoney(asNumber(deliveryFee));
-  const commission = calculateCommission(price, commissionPercentage);
+  const commission = calculateCommission(lineSubtotal, commissionPercentage);
   const deliveryCommissionPct = asNumber(
     deliveryCommissionPercentage,
     DEFAULT_DELIVERY_COMMISSION_PERCENTAGE
@@ -175,9 +183,12 @@ export function calculateOrderFinancials({
   const driverEarning = roundMoney(delivery - deliveryCommissionAmount);
 
   return {
-    listingPrice: roundMoney(price),
+    // Snapshot of the *unit* price at order time (matches schema semantics).
+    listingPrice: roundMoney(unitPrice),
+    quantity: qty,
+    lineSubtotal,
     deliveryFee: delivery,
-    buyerTotal: roundMoney(price + delivery),
+    buyerTotal: roundMoney(lineSubtotal + delivery),
     commissionPercentage: commission.commissionPercentage,
     commissionAmount: commission.commissionAmount,
     deliveryCommissionPercentage: deliveryCommissionPct,

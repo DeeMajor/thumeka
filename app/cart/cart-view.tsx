@@ -1,16 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ShoppingCart, Store, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Minus,
+  Plus,
+  ShoppingCart,
+  Store,
+  Trash2
+} from "lucide-react";
 
 import { useCart } from "@/components/cart-provider";
+import { CART_QUANTITY_MAX } from "@/lib/cart-types";
 import { formatMoney } from "@/lib/format";
 import { getListingImagePublicUrl } from "@/lib/listing-images";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
 export function CartView() {
-  const { items, businessName, total, ready, removeItem, clear } = useCart();
+  const {
+    items,
+    businessName,
+    total,
+    count,
+    ready,
+    addItem,
+    decrementItem,
+    removeItem,
+    clear
+  } = useCart();
 
   // While hydrating from localStorage, render a neutral placeholder so the
   // SSR / first-paint HTML matches without flashing an empty state.
@@ -67,7 +85,9 @@ export function CartView() {
   }
 
   const singleItem = items.length === 1;
-  const checkoutHref = singleItem ? `/checkout/${items[0].listingId}` : null;
+  const checkoutHref = singleItem
+    ? `/checkout/${items[0].listingId}?quantity=${items[0].quantity}`
+    : null;
 
   return (
     <div className="bg-mist" data-testid="page-cart">
@@ -101,11 +121,14 @@ export function CartView() {
                 item.imageUrl,
                 SUPABASE_URL
               );
+              const lineSubtotal = item.price * item.quantity;
+              const atCap = item.quantity >= CART_QUANTITY_MAX;
               return (
               <li
-                className="flex items-center gap-3 rounded-lg border border-black/10 bg-white p-3 sm:p-4"
+                className="flex items-start gap-3 rounded-lg border border-black/10 bg-white p-3 sm:p-4"
                 data-testid="cart-item"
                 data-listing-id={item.listingId}
+                data-quantity={item.quantity}
                 key={item.listingId}
               >
                 {publicUrl ? (
@@ -122,26 +145,83 @@ export function CartView() {
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <Link
-                    className="line-clamp-2 text-sm font-semibold text-ink hover:text-leaf sm:text-base"
-                    data-testid="cart-item-title-link"
-                    href={`/listings/${item.listingId}`}
-                  >
-                    {item.title}
-                  </Link>
-                  <p className="mt-1 text-sm font-semibold text-leaf">
-                    {formatMoney(item.price)}
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      className="line-clamp-2 text-sm font-semibold text-ink hover:text-leaf sm:text-base"
+                      data-testid="cart-item-title-link"
+                      href={`/listings/${item.listingId}`}
+                    >
+                      {item.title}
+                    </Link>
+                    <button
+                      aria-label={`Remove ${item.title} from cart`}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-black/45 transition hover:bg-mist hover:text-red-700"
+                      data-testid="cart-item-remove-button"
+                      onClick={() => removeItem(item.listingId)}
+                      type="button"
+                    >
+                      <Trash2 aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-caption text-black/55">
+                    {formatMoney(item.price)} each
                   </p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div
+                      aria-label={`Quantity: ${item.quantity}`}
+                      className="inline-flex items-center rounded-md border border-leaf bg-mint p-0.5"
+                      data-testid="cart-item-stepper"
+                      role="group"
+                    >
+                      <button
+                        aria-label={item.quantity === 1 ? "Remove from cart" : "Decrease quantity"}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-leaf transition hover:bg-leaf hover:text-white active:scale-95"
+                        data-testid="cart-item-decrement-button"
+                        onClick={() => decrementItem(item.listingId)}
+                        type="button"
+                      >
+                        <Minus aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                      <span
+                        aria-live="polite"
+                        className="min-w-[2rem] px-2 text-center text-sm font-semibold text-leaf"
+                        data-testid="cart-item-quantity"
+                      >
+                        {item.quantity}
+                      </span>
+                      <button
+                        aria-disabled={atCap}
+                        aria-label={atCap ? "Maximum quantity reached" : "Increase quantity"}
+                        className={
+                          atCap
+                            ? "inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/60 text-leaf/40 cursor-not-allowed"
+                            : "inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-leaf transition hover:bg-leaf hover:text-white active:scale-95"
+                        }
+                        data-testid="cart-item-increment-button"
+                        disabled={atCap}
+                        onClick={() =>
+                          addItem({
+                            listingId: item.listingId,
+                            providerId: item.providerId,
+                            title: item.title,
+                            price: item.price,
+                            imageUrl: item.imageUrl,
+                            businessName: item.businessName
+                          })
+                        }
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p
+                      className="text-sm font-semibold text-leaf"
+                      data-testid="cart-item-line-subtotal"
+                    >
+                      {formatMoney(lineSubtotal)}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  aria-label={`Remove ${item.title} from cart`}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-black/45 transition hover:bg-mist hover:text-red-700"
-                  data-testid="cart-item-remove-button"
-                  onClick={() => removeItem(item.listingId)}
-                  type="button"
-                >
-                  <Trash2 aria-hidden="true" className="h-4 w-4" />
-                </button>
               </li>
               );
             })}
@@ -156,7 +236,9 @@ export function CartView() {
             <dl className="mt-4 space-y-2 text-body-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-black/60">Items</dt>
-                <dd className="font-semibold text-ink">{items.length}</dd>
+                <dd className="font-semibold text-ink" data-testid="cart-summary-count">
+                  {count}
+                </dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-black/60">Subtotal</dt>

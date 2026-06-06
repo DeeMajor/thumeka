@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     listingId?: string;
     address?: string;
     suburb?: string;
+    quantity?: number;
     lat?: number;
     lng?: number;
   };
@@ -25,6 +26,13 @@ export async function POST(request: Request) {
   const listingId = typeof body.listingId === "string" ? body.listingId : "";
   const address = typeof body.address === "string" ? body.address : "";
   const suburb = typeof body.suburb === "string" ? body.suburb : "";
+  // Clamp quantity to [1, 99] so a hostile / typo'd value can't produce
+  // a malformed quote. The cart UI clamps too; this is belt-and-braces.
+  const rawQuantity =
+    typeof body.quantity === "number" && Number.isInteger(body.quantity)
+      ? body.quantity
+      : 1;
+  const quantity = Math.min(99, Math.max(1, rawQuantity));
   const dest =
     typeof body.lat === "number" &&
     typeof body.lng === "number" &&
@@ -40,7 +48,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const quote = await getDeliveryQuote({ listingId, address, suburb, dest });
+  const quote = await getDeliveryQuote({
+    listingId,
+    address,
+    suburb,
+    quantity,
+    dest
+  });
   if (!quote) {
     return NextResponse.json(
       {
@@ -54,6 +68,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     distanceKm: quote.distanceKm,
     deliveryFee: quote.deliveryFee,
-    buyerTotal: quote.buyerTotal
+    buyerTotal: quote.buyerTotal,
+    lineSubtotal: quote.lineSubtotal,
+    quantity: quote.quantity
   });
 }
