@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Store } from "lucide-react";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { ListingImage } from "@/components/listing-image";
+import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import type { CategoryRow, ListingRow } from "@/lib/database.types";
 import { formatMoney, titleCase } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,13 +49,17 @@ async function getListing(id: string) {
 
 export default async function ListingPage({ params }: ListingPageProps) {
   const { id } = await params;
-  const data = await getListing(id);
+  const [data, profile] = await Promise.all([
+    getListing(id),
+    getCurrentProfile().catch(() => null)
+  ]);
 
   if (!data) {
     notFound();
   }
 
   const { listing, category } = data;
+  const canShop = canShopAsBuyer(profile);
 
   return (
     <div className="section-band" data-testid="page-listing-detail">
@@ -113,18 +118,20 @@ export default async function ListingPage({ params }: ListingPageProps) {
             >
               Checkout
             </Link>
-            <AddToCartButton
-              data-testid="listing-detail-add-to-cart"
-              item={{
-                listingId: listing.id,
-                providerId: listing.provider_id,
-                title: listing.title,
-                price: Number(listing.price),
-                imageUrl: listing.image_url ?? null,
-                businessName: listing.business_name ?? null
-              }}
-              variant="label"
-            />
+            {canShop ? (
+              <AddToCartButton
+                data-testid="listing-detail-add-to-cart"
+                item={{
+                  listingId: listing.id,
+                  providerId: listing.provider_id,
+                  title: listing.title,
+                  price: Number(listing.price),
+                  imageUrl: listing.image_url ?? null,
+                  businessName: listing.business_name ?? null
+                }}
+                variant="label"
+              />
+            ) : null}
           </div>
         </div>
       </div>

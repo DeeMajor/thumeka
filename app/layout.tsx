@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { CartIcon } from "@/components/cart-icon";
 import { CartProvider } from "@/components/cart-provider";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
-import { getCurrentProfile } from "@/lib/auth";
+import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
 import { getAppUrl } from "@/lib/env";
 import { roleHomePath } from "@/lib/routes";
@@ -46,6 +46,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const profile = await getCurrentProfile().catch(() => null);
+  const canShop = canShopAsBuyer(profile);
   return (
     <html lang="en-ZA" className={jakarta.variable} suppressHydrationWarning>
       <body
@@ -111,8 +112,12 @@ export default async function RootLayout({
               className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
               data-testid="desktop-nav"
             >
-              <CartIcon />
-              <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+              {canShop ? (
+                <>
+                  <CartIcon />
+                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
+                </>
+              ) : null}
               {profile ? (
                 <>
                   <Link
@@ -154,7 +159,7 @@ export default async function RootLayout({
             {/* Mobile cluster: cart icon stays out of the dropdown so it's
                 always one tap away even when the menu is closed. */}
             <div className="flex items-center gap-1 sm:hidden">
-              <CartIcon />
+              {canShop ? <CartIcon /> : null}
               <MobileNavMenu>
               <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
                 Browse

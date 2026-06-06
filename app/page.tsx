@@ -10,7 +10,7 @@ import {
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { EmptyState } from "@/components/empty-state";
 import { ListingImage } from "@/components/listing-image";
-import { getCurrentProfile } from "@/lib/auth";
+import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import { APP_NAME, SEEDED_CATEGORIES } from "@/lib/constants";
 import type { CategoryRow, ListingRow } from "@/lib/database.types";
 import { formatMoney, titleCase } from "@/lib/format";
@@ -79,6 +79,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       getCurrentProfile().catch(() => null)
     ]);
 
+  const canShop = canShopAsBuyer(profile);
   const categoryNames = categories.length
     ? categories.map((category) => category.name)
     : SEEDED_CATEGORIES;
@@ -296,20 +297,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         className="relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3]"
                         storagePath={listing.image_url}
                       />
-                      <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
-                        <AddToCartButton
-                          data-testid={`listing-card-${listing.id.slice(0, 8)}-add`}
-                          item={{
-                            listingId: listing.id,
-                            providerId: listing.provider_id,
-                            title: listing.title,
-                            price: Number(listing.price),
-                            imageUrl: listing.image_url ?? null,
-                            businessName: listing.business_name ?? null
-                          }}
-                          variant="fab"
-                        />
-                      </div>
+                      {canShop ? (
+                        <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+                          <AddToCartButton
+                            data-testid={`listing-card-${listing.id.slice(0, 8)}-add`}
+                            item={{
+                              listingId: listing.id,
+                              providerId: listing.provider_id,
+                              title: listing.title,
+                              price: Number(listing.price),
+                              imageUrl: listing.image_url ?? null,
+                              businessName: listing.business_name ?? null
+                            }}
+                            variant="fab"
+                          />
+                        </div>
+                      ) : null}
                     </div>
                     <div className="mb-1 flex items-center justify-between gap-1 sm:mb-2 sm:gap-2">
                       <span className="hidden rounded-md bg-mint px-2 py-0.5 text-xs font-semibold text-leaf sm:inline-flex">

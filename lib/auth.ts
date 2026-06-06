@@ -45,6 +45,15 @@ export async function requireProfile(): Promise<SessionProfile> {
   return { userId: user.id, profile };
 }
 
+export function canShopAsBuyer(
+  profile: ProfileRow | null | undefined
+): boolean {
+  // Anonymous users keep the cart (sign-in is prompted at checkout, not at
+  // "Add to cart"). Signed-in non-buyer roles — provider, driver, admin —
+  // see a pure non-buyer experience.
+  return !profile || profile.role === "buyer";
+}
+
 export async function requireRole(roles: AppRole[]): Promise<SessionProfile> {
   const session = await requireProfile();
 
