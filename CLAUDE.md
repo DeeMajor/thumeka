@@ -41,3 +41,15 @@ This project is indexed by GitNexus as **thumeka** (1948 symbols, 3811 relations
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+# Working on this project
+
+## Branch workflow
+
+- Substantive features go on a `feature/<short-name>` branch — not directly on `main`.
+- Each branch gets a PR back to `main`. PRs should land green: `npm run lint && npm test && npm run build` clean.
+- After review, squash-merge to `main`.
+- One-line hotfixes (typos, copy tweaks) can still land directly on `main`, but only with explicit "ship to main" authorisation in the same turn.
+- `main` is what's deployed on Plesk; never push half-done work there.
+
+When in doubt: start with `git checkout -b feature/<name>` before the first edit, and finish with a push + PR. Don't ask permission to make the branch — just make it.
