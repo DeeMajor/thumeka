@@ -3,12 +3,12 @@ import {
   ArrowRight,
   Clock,
   MapPin,
-  Search,
   ShoppingBag
 } from "lucide-react";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { EmptyState } from "@/components/empty-state";
+import { HomeSearchInput } from "@/components/home-search-input";
 import { ListingImage } from "@/components/listing-image";
 import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import { APP_NAME, SEEDED_CATEGORIES } from "@/lib/constants";
@@ -315,39 +315,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
           {/* Right pane: search + grid */}
           <div className="min-w-0 flex-1">
-            <form
-              className="flex gap-2 rounded-lg border border-black/10 bg-white p-2"
-              data-testid="home-search-form"
-            >
-              <label className="flex min-w-0 flex-1 items-center gap-2 px-2">
-                <Search
-                  aria-hidden="true"
-                  className="h-4 w-4 flex-none text-black/45"
-                />
-                <span className="sr-only">Search listings</span>
-                <input
-                  className="min-h-10 w-full bg-transparent text-sm outline-none"
-                  data-testid="home-search-input"
-                  defaultValue={params.q ?? ""}
-                  name="q"
-                  placeholder="Search food, repairs, errands"
-                />
-              </label>
-              {activeCategory ? (
-                <input
-                  name="category"
-                  type="hidden"
-                  value={activeCategory}
-                />
-              ) : null}
-              <button
-                className="btn-secondary px-3"
-                data-testid="home-search-button"
-                type="submit"
-              >
-                Search
-              </button>
-            </form>
+            <HomeSearchInput
+              category={activeCategory}
+              defaultValue={params.q ?? ""}
+            />
 
             {listings.length ? (
               <div className="mobile-grid mt-5">
