@@ -463,6 +463,23 @@ export async function deleteProviderListingAction(formData: FormData) {
     redirectWithError("Unable to delete listing");
   }
 
+  // Defensive verify: Supabase RLS denies DELETE silently — the call
+  // returns { error: null, count: 0 } when no policy permits the row.
+  // Without this check we'd redirect with a "Listing deleted." banner
+  // while the row is still in the database. Reading the row back
+  // confirms whether the delete actually happened.
+  const { data: stillThere } = await supabase
+    .from("listings")
+    .select("id")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (stillThere) {
+    redirectWithError(
+      "Delete didn't take effect. Database policy may not allow it — please contact support."
+    );
+  }
+
   revalidatePath("/provider/dashboard");
   revalidatePath("/listings");
   revalidatePath("/");
