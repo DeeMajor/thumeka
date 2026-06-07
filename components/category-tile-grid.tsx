@@ -1,5 +1,6 @@
 "use client";
 
+import { LayoutGrid } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
@@ -68,6 +69,15 @@ export function CategoryTileGrid({
     });
   }
 
+  function onTapAll() {
+    // Clear every selected category. Keeps other URL params intact
+    // (sort, suburb, price band) — only the category list is wiped.
+    startTransition(() => {
+      router.replace(urlFor([]), { scroll: false });
+    });
+  }
+  const allActive = activeCategories.length === 0;
+
   const tileWidthCls =
     layout === "mobile" ? "w-[76px]" : "w-[88px]";
   const iconBoxCls =
@@ -85,6 +95,33 @@ export function CategoryTileGrid({
       className={`flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-pl-1 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${className ?? ""}`}
       data-testid={`category-tile-rail-${layout}`}
     >
+      {/* "All" tile — first in the rail. Tapping it clears every
+          category from the URL (the listings grid widens to "no
+          category filter"). Highlighted when no categories are
+          selected. */}
+      <button
+        aria-pressed={allActive}
+        className={`group flex shrink-0 snap-start flex-col items-center justify-start gap-1.5 rounded-2xl border bg-white p-2 text-center shadow-soft transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-1 ${tileWidthCls} ${
+          allActive
+            ? "border-leaf bg-mint"
+            : "border-black/10 hover:border-leaf/40"
+        }`}
+        data-testid="category-tile-all"
+        onClick={onTapAll}
+        type="button"
+      >
+        <span
+          className={`flex items-center justify-center rounded-full transition group-hover:scale-105 ${iconBoxCls} ${
+            allActive ? "bg-leaf text-white" : "bg-black/5 text-black/60"
+          }`}
+        >
+          <LayoutGrid aria-hidden="true" className={iconSizeCls} />
+        </span>
+        <span className="line-clamp-2 text-caption font-semibold leading-tight text-ink">
+          All
+        </span>
+      </button>
+
       {categories.map((category) => {
         const isActive = activeCategories.some(
           (name) => name.toLowerCase() === category.toLowerCase()
