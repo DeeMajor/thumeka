@@ -77,7 +77,7 @@ export function MobileNavMenu({ children }: MobileNavMenuProps) {
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-black/10 bg-white p-2 shadow-soft"
+          className="absolute right-0 z-50 mt-2 flex w-56 max-w-[calc(100vw-1.5rem)] flex-col gap-2 rounded-lg border border-black/10 bg-white p-2 shadow-soft"
           id="mobile-nav-panel"
           onClick={() => setOpen(false)}
         >

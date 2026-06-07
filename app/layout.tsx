@@ -266,6 +266,15 @@ export default async function RootLayout({
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    className="text-ink hover:text-leaf"
+                    data-testid="footer-why-thumeka-link"
+                    href="/welcome"
+                  >
+                    Why {APP_NAME}?
+                  </Link>
+                </li>
+                <li>
                   <Link className="text-ink hover:text-leaf" href="/auth/register">
                     Become a seller
                   </Link>
