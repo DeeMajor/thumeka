@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { requireRole } from "@/lib/auth";
-import { createOrderFromLineItems } from "@/lib/checkout-order";
+import {
+  createOrderFromLineItems,
+  type CheckoutLineItemInput
+} from "@/lib/checkout-order";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validateAndNormalizeZaPhone } from "@/lib/validators";
 
@@ -14,59 +17,71 @@ function readString(formData: FormData, key: string) {
 
 function readFiniteNumber(formData: FormData, key: string) {
   const raw = readString(formData, key);
-  if (!raw) {
-    return null;
-  }
+  if (!raw) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
- * Read + validate the quantity from FormData. Defaults to 1 and clamps
- * to [1, 99] — the upper bound matches the per-line cap on
- * `order_items.quantity`. Anything non-integer (e.g. "garbage", "2.5")
- * falls back to 1 silently rather than erroring; the cart + checkout
- * page both clamp client-side too.
+ * Parse the `cart_items` hidden field — a JSON-encoded array of
+ * `{ listingId, quantity }`. Returns the typed list or `null` if the
+ * payload is malformed; caller treats null as "empty cart" and bounces.
  */
-function readQuantity(formData: FormData): number {
-  const raw = readString(formData, "quantity");
-  if (!raw) return 1;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) return 1;
-  if (parsed > 99) return 99;
-  return parsed;
+function parseCartItems(formData: FormData): CheckoutLineItemInput[] | null {
+  const raw = readString(formData, "cart_items");
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const items: CheckoutLineItemInput[] = [];
+    for (const entry of parsed) {
+      if (entry === null || typeof entry !== "object") return null;
+      const obj = entry as Record<string, unknown>;
+      if (
+        typeof obj.listingId !== "string" ||
+        typeof obj.quantity !== "number"
+      ) {
+        return null;
+      }
+      items.push({
+        listingId: obj.listingId,
+        quantity: obj.quantity
+      });
+    }
+    return items;
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Buy-now action — single listing per order, kept on its own URL
- * (`/checkout/[listingId]`) so the listing-detail "Checkout" CTA stays
- * a one-click shortcut. Wraps the shared
- * `createOrderFromLineItems` helper with a one-element items array.
+ * Cart-aware order action. Posts the buyer's full cart (via the
+ * `cart_items` hidden input the client form serialises), validates
+ * server-side against live DB prices, creates the order + its line
+ * items, and redirects to `/buyer/orders` with `clear_cart=1` so the
+ * mounted `<CartClearOnMount />` empties localStorage exactly once.
  */
-export async function createOrderRequestAction(formData: FormData) {
+export async function createCartOrderRequestAction(formData: FormData) {
   const { profile } = await requireRole(["buyer"]);
-  const listingId = readString(formData, "listing_id");
 
-  if (!listingId) {
-    redirect("/listings");
+  const items = parseCartItems(formData);
+  if (!items || items.length === 0) {
+    redirect("/cart");
   }
 
   const buyerName = readString(formData, "buyer_name") || profile.full_name || "";
   const buyerPhone = readString(formData, "buyer_phone") || profile.phone || "";
   const buyerWhatsapp = readString(formData, "buyer_whatsapp");
-  // Silent — never asked at checkout. Falls back to profile.email so
-  // backend emails (provider notification etc.) still have a target.
-  const buyerEmail = profile.email;
+  const buyerEmail = profile.email; // silent, from signup
   const deliveryAddress = readString(formData, "delivery_address");
   const suburb = readString(formData, "suburb");
   const buyerNotes = readString(formData, "buyer_notes") || null;
   const requestedDate = readString(formData, "requested_date") || null;
   const requestedTime = readString(formData, "requested_time") || null;
-  const quantity = readQuantity(formData);
 
   if (!buyerName || !buyerPhone || !buyerWhatsapp) {
     redirect(
-      `/checkout/${listingId}?error=${encodeURIComponent(
+      `/checkout?error=${encodeURIComponent(
         "Name, phone and WhatsApp are required."
       )}`
     );
@@ -75,34 +90,29 @@ export async function createOrderRequestAction(formData: FormData) {
   const phoneResult = validateAndNormalizeZaPhone(buyerPhone);
   if (!phoneResult.ok) {
     redirect(
-      `/checkout/${listingId}?error=${encodeURIComponent(
-        `Phone: ${phoneResult.error}`
-      )}`
+      `/checkout?error=${encodeURIComponent(`Phone: ${phoneResult.error}`)}`
     );
   }
-  const normalizedBuyerPhone = phoneResult.value;
-
   const whatsappResult = validateAndNormalizeZaPhone(buyerWhatsapp);
   if (!whatsappResult.ok) {
     redirect(
-      `/checkout/${listingId}?error=${encodeURIComponent(
+      `/checkout?error=${encodeURIComponent(
         `WhatsApp: ${whatsappResult.error}`
       )}`
     );
   }
-  const normalizedBuyerWhatsapp = whatsappResult.value;
 
   const supabase = await createSupabaseServerClient();
 
   const result = await createOrderFromLineItems({
     supabase,
     profile,
-    items: [{ listingId, quantity }],
+    items,
     buyer: {
       name: buyerName,
-      phone: normalizedBuyerPhone,
+      phone: phoneResult.value,
       email: buyerEmail,
-      whatsapp: normalizedBuyerWhatsapp,
+      whatsapp: whatsappResult.value,
       notes: buyerNotes,
       requestedDate,
       requestedTime
@@ -116,8 +126,8 @@ export async function createOrderRequestAction(formData: FormData) {
   });
 
   if (!result.ok) {
-    redirect(`/checkout/${listingId}?error=${encodeURIComponent(result.error)}`);
+    redirect(`/checkout?error=${encodeURIComponent(result.error)}`);
   }
 
-  redirect(`/buyer/orders?created=${result.orderId}`);
+  redirect(`/buyer/orders?created=${result.orderId}&clear_cart=1`);
 }

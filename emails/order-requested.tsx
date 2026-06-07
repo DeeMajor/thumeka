@@ -4,6 +4,15 @@ import { APP_NAME } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { EmailBase, styles } from "@/emails/base";
 
+export type OrderRequestedLineItem = {
+  title: string;
+  /** Unit price. */
+  price: number;
+  quantity: number;
+  /** `price × quantity`. */
+  subtotal: number;
+};
+
 export type OrderRequestedEmailProps = {
   providerName: string;
   buyerName: string;
@@ -17,6 +26,10 @@ export type OrderRequestedEmailProps = {
   /** Already qty-multiplied subtotal (listingPrice × quantity).
    *  Pre-computed at the call site so the email doesn't have to. */
   lineSubtotal?: number;
+  /** Multi-item orders pass the full line list; when present (and
+   *  `length > 1`) the email renders an itemised table instead of the
+   *  single Listing/Price/Qty rows. Single-line orders omit this. */
+  lineItems?: OrderRequestedLineItem[];
   deliveryAddress: string | null;
   suburb: string | null;
   buyerNotes: string | null;
@@ -46,6 +59,7 @@ export function OrderRequestedEmail({
   listingPrice,
   quantity = 1,
   lineSubtotal,
+  lineItems,
   deliveryAddress,
   suburb,
   buyerNotes,
@@ -56,6 +70,7 @@ export function OrderRequestedEmail({
   dashboardUrl,
 }: OrderRequestedEmailProps) {
   const subtotal = lineSubtotal ?? listingPrice * quantity;
+  const isMultiItem = Boolean(lineItems && lineItems.length > 1);
   return (
     <EmailBase preview={`New order request — ${APP_NAME}`} appUrl={appUrl}>
       <h1 style={styles.heading}>New order request 📦</h1>
@@ -67,17 +82,37 @@ export function OrderRequestedEmail({
 
       <hr style={styles.divider} />
       <p style={{ ...styles.muted, fontWeight: "600", marginBottom: "8px" }}>Order details</p>
-      <InfoRow label="Listing" value={listingTitle} />
-      {quantity > 1 ? (
+      {isMultiItem ? (
         <>
-          <InfoRow label="Quantity" value={`${quantity}`} />
-          <InfoRow
-            label="Price"
-            value={`${formatMoney(listingPrice)} × ${quantity} = ${formatMoney(subtotal)}`}
-          />
+          {lineItems!.map((item, index) => (
+            <div key={`${item.title}-${index}`} style={styles.infoRow}>
+              <span style={styles.infoLabel}>
+                {item.title}
+                {item.quantity > 1 ? ` (${formatMoney(item.price)} × ${item.quantity})` : ""}
+              </span>
+              <span style={styles.infoValue}>{formatMoney(item.subtotal)}</span>
+            </div>
+          ))}
+          <div style={{ ...styles.infoRow, fontWeight: "600" }}>
+            <span style={styles.infoLabel}>Subtotal</span>
+            <span style={styles.infoValue}>{formatMoney(subtotal)}</span>
+          </div>
         </>
       ) : (
-        <InfoRow label="Price" value={formatMoney(listingPrice)} />
+        <>
+          <InfoRow label="Listing" value={listingTitle} />
+          {quantity > 1 ? (
+            <>
+              <InfoRow label="Quantity" value={`${quantity}`} />
+              <InfoRow
+                label="Price"
+                value={`${formatMoney(listingPrice)} × ${quantity} = ${formatMoney(subtotal)}`}
+              />
+            </>
+          ) : (
+            <InfoRow label="Price" value={formatMoney(listingPrice)} />
+          )}
+        </>
       )}
       <InfoRow label="Order ref" value={orderId.slice(0, 8).toUpperCase()} />
 

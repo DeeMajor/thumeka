@@ -14,6 +14,10 @@ export async function POST(request: Request) {
     address?: string;
     suburb?: string;
     quantity?: number;
+    /** Multi-item: the buyer's subtotal computed from the live cart on
+     *  the server. When set, the quote uses it as the line subtotal
+     *  instead of `unitPrice × quantity`. */
+    lineSubtotal?: number;
     lat?: number;
     lng?: number;
   };
@@ -33,6 +37,12 @@ export async function POST(request: Request) {
       ? body.quantity
       : 1;
   const quantity = Math.min(99, Math.max(1, rawQuantity));
+  const lineSubtotalOverride =
+    typeof body.lineSubtotal === "number" &&
+    Number.isFinite(body.lineSubtotal) &&
+    body.lineSubtotal > 0
+      ? body.lineSubtotal
+      : undefined;
   const dest =
     typeof body.lat === "number" &&
     typeof body.lng === "number" &&
@@ -53,6 +63,7 @@ export async function POST(request: Request) {
     address,
     suburb,
     quantity,
+    lineSubtotalOverride,
     dest
   });
   if (!quote) {

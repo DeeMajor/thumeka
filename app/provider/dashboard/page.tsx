@@ -11,6 +11,7 @@ import type {
   AdminSettingsRow,
   CategoryRow,
   ListingRow,
+  OrderItemRow,
   OrderRow,
   ProviderProfileRow
 } from "@/lib/database.types";
@@ -110,6 +111,25 @@ export default async function ProviderDashboardPage({
   const orders = (ordersData ?? []) as OrderRow[];
   const categories = (categoriesData ?? []) as CategoryRow[];
   const listings = (listingsData ?? []) as ListingRow[];
+
+  // Pull line items for the orders we just loaded — needed so the drawer
+  // can render a per-line list for multi-item orders. Cheap: one round
+  // trip, indexed lookup, capped to the same 12 orders.
+  const orderIds = orders.map((order) => order.id);
+  const { data: orderItemsData } = orderIds.length
+    ? await supabase
+        .from("order_items")
+        .select("*")
+        .in("order_id", orderIds)
+        .order("position", { ascending: true })
+    : { data: [] };
+  const orderItems = (orderItemsData ?? []) as OrderItemRow[];
+  const orderItemsByOrderId = new Map<string, OrderItemRow[]>();
+  for (const item of orderItems) {
+    const list = orderItemsByOrderId.get(item.order_id) ?? [];
+    list.push(item);
+    orderItemsByOrderId.set(item.order_id, list);
+  }
   const eftPaymentInstructions = (settings as Pick<
     AdminSettingsRow,
     "eft_payment_instructions"
@@ -315,6 +335,7 @@ export default async function ProviderDashboardPage({
           <ProviderOrdersBoard
             eftInstructions={eftPaymentInstructions}
             orders={orders}
+            orderItemsByOrderId={Object.fromEntries(orderItemsByOrderId)}
           />
         ) : (
           <div className="space-y-4">

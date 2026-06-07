@@ -16,6 +16,12 @@ export type OrderAcceptedEftEmailProps = {
   orderId: string;
   appUrl: string;
   ordersUrl: string;
+  /** wa.me deep-link to the support number with a pre-filled proof-of-
+   *  payment message. When set, the email renders an "Open WhatsApp" CTA
+   *  in place of the "email proof to admin@thumeka.co.za" line.
+   *  Caller (provider-accept action) builds it from
+   *  `createWhatsAppUrl(buildPaymentProofMessage(order))`. */
+  whatsappPopUrl?: string | null;
 };
 
 export function OrderAcceptedEftEmail({
@@ -30,6 +36,7 @@ export function OrderAcceptedEftEmail({
   orderId,
   appUrl,
   ordersUrl,
+  whatsappPopUrl,
 }: OrderAcceptedEftEmailProps) {
   const reference = `THMK-${orderId.slice(0, 8).toUpperCase()}`;
 
@@ -92,19 +99,41 @@ export function OrderAcceptedEftEmail({
         ⚠️ Use <strong>{reference}</strong> as your payment reference — it helps
         us match your payment quickly.
       </p>
-      <p style={styles.muted}>
-        Once payment is received, email your proof of payment to{" "}
-        <a href={`mailto:${ADMIN_EMAIL}`} style={{ color: "#1a1a2e" }}>
-          {ADMIN_EMAIL}
-        </a>{" "}
-        and your order will be confirmed.
-      </p>
-
-      <p style={{ textAlign: "center" as const, margin: "24px 0" }}>
-        <a href={ordersUrl} style={styles.button}>
-          View my orders
-        </a>
-      </p>
+      {whatsappPopUrl ? (
+        <>
+          <p style={styles.muted}>
+            Once payment is made, send us the proof on WhatsApp — we&apos;ll
+            approve your order in seconds.
+          </p>
+          <p style={{ textAlign: "center" as const, margin: "24px 0" }}>
+            <a href={whatsappPopUrl} style={styles.button}>
+              Open WhatsApp
+            </a>
+          </p>
+          <p style={{ ...styles.muted, fontSize: 12, textAlign: "center" as const }}>
+            Or{" "}
+            <a href={ordersUrl} style={{ color: "#6b7280" }}>
+              view my orders
+            </a>
+            .
+          </p>
+        </>
+      ) : (
+        <>
+          <p style={styles.muted}>
+            Once payment is received, email your proof of payment to{" "}
+            <a href={`mailto:${ADMIN_EMAIL}`} style={{ color: "#1a1a2e" }}>
+              {ADMIN_EMAIL}
+            </a>{" "}
+            and your order will be confirmed.
+          </p>
+          <p style={{ textAlign: "center" as const, margin: "24px 0" }}>
+            <a href={ordersUrl} style={styles.button}>
+              View my orders
+            </a>
+          </p>
+        </>
+      )}
     </EmailBase>
   );
 }

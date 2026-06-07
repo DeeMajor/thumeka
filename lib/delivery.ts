@@ -42,6 +42,11 @@ type QuoteInput = {
   /** Units of the listing being ordered. Defaults to 1. Clamped to
    *  [1, 99] — anything else is treated as 1 (caller validates upstream). */
   quantity?: number;
+  /** Multi-item override. When set, the financials use this as the
+   *  buyer's subtotal across the cart instead of `unitPrice × quantity`.
+   *  The caller (cart-checkout) computes it server-side from the live
+   *  prices of all listings in the cart. */
+  lineSubtotalOverride?: number;
   /** Pre-resolved destination coordinates (e.g. from Places Autocomplete). When
    * present and valid, the server skips its own geocoding call and uses them
    * directly. */
@@ -62,6 +67,7 @@ export async function getDeliveryQuote({
   address,
   suburb,
   quantity,
+  lineSubtotalOverride,
   dest: clientDest
 }: QuoteInput): Promise<DeliveryQuote | null> {
   const trimmedAddress = address.trim();
@@ -119,7 +125,8 @@ export async function getDeliveryQuote({
     deliveryFee,
     commissionPercentage,
     deliveryCommissionPercentage,
-    quantity
+    quantity,
+    lineSubtotalOverride
   });
 
   return {
