@@ -4,6 +4,8 @@ import { Suspense } from "react";
 
 import { CartClearOnMount } from "@/components/cart-clear-on-mount";
 import { EmptyState } from "@/components/empty-state";
+import { InstallPwaNudge } from "@/components/install-pwa-nudge";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { StatusPill } from "@/components/status-pill";
 import { requireRole } from "@/lib/auth";
@@ -126,6 +128,8 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
               Order request created. The provider must accept before payment instructions are shown.
             </div>
           ) : null}
+          <PushNotificationPrompt role="buyer" />
+          <InstallPwaNudge />
         </div>
       </section>
 

@@ -8,6 +8,8 @@ import { requireRole } from "@/lib/auth";
 import type { DriverProfileRow, OrderRow } from "@/lib/database.types";
 import { sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
+import { sendPush } from "@/lib/push";
+import { pushEvents } from "@/lib/push-events";
 import {
   completeDriverDelivery,
   markDriverOutForDelivery,
@@ -125,6 +127,25 @@ async function updateDeliveryStatus(formData: FormData, transition: DeliveryTran
         }),
       }).catch((err: Error) => console.warn("[email] Delivery completed email failed:", err.message));
     }
+  }
+
+  // Push the buyer at the two moments they care most about — order
+  // heading out, and order delivered. Wrapped so push failures can't
+  // break the delivery update.
+  try {
+    if (updatedOrder.status === "out_for_delivery") {
+      await sendPush({
+        userId: existingOrder.buyer_id,
+        ...pushEvents.buyerOutForDelivery()
+      });
+    } else if (updatedOrder.status === "completed") {
+      await sendPush({
+        userId: existingOrder.buyer_id,
+        ...pushEvents.buyerCompleted()
+      });
+    }
+  } catch (err) {
+    console.warn("[push] buyer delivery-update failed:", (err as Error).message);
   }
 
   revalidatePath("/driver/dashboard");

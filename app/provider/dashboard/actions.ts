@@ -13,6 +13,8 @@ import type {
 } from "@/lib/database.types";
 import type { ListingType } from "@/lib/constants";
 import { sendEmail } from "@/lib/email";
+import { sendPush } from "@/lib/push";
+import { pushEvents } from "@/lib/push-events";
 import { getAppUrl } from "@/lib/env";
 import { toLatLng } from "@/lib/geo";
 import { isValidListingImageStoragePath } from "@/lib/listing-images";
@@ -180,6 +182,16 @@ export async function acceptProviderOrderAction(formData: FormData) {
         whatsappPopUrl,
       }),
     }).catch((err: Error) => console.warn("[email] Order accepted EFT email failed:", err.message));
+  }
+
+  // Push the buyer — wrapped so a push failure never blocks the action.
+  try {
+    await sendPush({
+      userId: existingOrder.buyer_id,
+      ...pushEvents.buyerOrderAccepted(providerProfile.business_name ?? "Your provider")
+    });
+  } catch (err) {
+    console.warn("[push] buyer order-accepted failed:", (err as Error).message);
   }
 
   revalidatePath("/provider/dashboard");

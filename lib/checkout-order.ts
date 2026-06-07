@@ -6,6 +6,8 @@ import { OrderRequestedEmail } from "@/emails/order-requested";
 import { getDeliveryQuote } from "@/lib/delivery";
 import { sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
+import { sendPush } from "@/lib/push";
+import { orderRef, pushEvents } from "@/lib/push-events";
 import type { ProfileRow } from "@/lib/database.types";
 
 export type CheckoutLineItemInput = {
@@ -298,6 +300,24 @@ export async function createOrderFromLineItems({
         }),
       }).catch((err: Error) =>
         console.warn("[email] Order request email failed:", err.message)
+      );
+    }
+
+    // Push the provider in parallel with the email — they see the order
+    // land the moment the buyer submits. Wrapped so push failures can't
+    // break order creation; we already have the orderId committed.
+    try {
+      await sendPush({
+        userId: providerProfile.user_id,
+        ...pushEvents.providerNewOrder(
+          primaryListing.title ?? "an order",
+          orderRef(orderId)
+        )
+      });
+    } catch (err) {
+      console.warn(
+        "[push] provider new-order failed:",
+        (err as Error).message
       );
     }
   }

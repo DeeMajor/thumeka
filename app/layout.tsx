@@ -28,9 +28,22 @@ export const metadata: Metadata = {
     "South Africa's safest and most empowering marketplace — products, services, errands, and deliveries.",
   icons: {
     icon: [
-      { url: "/thumeka.png", type: "image/png" }
+      { url: "/thumeka.png", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
     ],
-    apple: "/thumeka.png"
+    // iOS Safari only renders the apple-touch-icon when set; this drives
+    // the home-screen icon after "Add to Home Screen".
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180" }
+    ]
+  },
+  // appleWebApp turns on iOS standalone mode (no Safari chrome) when the
+  // PWA is launched from the home screen. Required for iOS Web Push.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Thumeka"
   },
   openGraph: {
     title: "Thumeka",

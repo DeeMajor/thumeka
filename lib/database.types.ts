@@ -255,6 +255,18 @@ export type DocumentRow = {
   created_at: string;
 };
 
+export type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  /** ECDH public key, base64url. */
+  p256dh: string;
+  /** Shared auth secret, base64url. */
+  auth: string;
+  user_agent: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -272,6 +284,7 @@ export type Database = {
       payout_items: Table<PayoutItemRow>;
       audit_logs: Table<AuditLogRow>;
       documents: Table<DocumentRow>;
+      push_subscriptions: Table<PushSubscriptionRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
