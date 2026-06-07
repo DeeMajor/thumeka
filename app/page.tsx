@@ -5,22 +5,40 @@ import {
   MapPin,
   ShoppingBag
 } from "lucide-react";
+import { Suspense } from "react";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { CategoryTileGrid } from "@/components/category-tile-grid";
 import { EmptyState } from "@/components/empty-state";
-import { HomeSearchInput } from "@/components/home-search-input";
+import { FilterBottomSheet } from "@/components/filter-bottom-sheet";
 import { ListingImage } from "@/components/listing-image";
+import { MarketplaceActiveFilters } from "@/components/marketplace-active-filters";
+import { MarketplaceFilterStrip } from "@/components/marketplace-filter-strip";
 import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import { APP_NAME, SEEDED_CATEGORIES } from "@/lib/constants";
 import type { CategoryRow, ListingRow } from "@/lib/database.types";
 import { formatMoney, titleCase } from "@/lib/format";
+import {
+  type MarketplaceSort,
+  sanitisePrice,
+  sanitiseSort,
+  sanitiseSuburb
+} from "@/lib/marketplace-filters";
 import { roleHomePath } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type HomePageProps = {
-  searchParams: Promise<{ category?: string; q?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    q?: string;
+    sort?: string;
+    min_price?: string;
+    max_price?: string;
+    suburb?: string;
+    open_only?: string;
+  }>;
 };
 
 /**
@@ -44,10 +62,27 @@ function sanitiseSearchKeyword(raw: string | undefined): string {
     .slice(0, 80);
 }
 
-async function getMarketplaceData(
-  categoryName: string | undefined,
-  searchKeyword: string | undefined
-) {
+type MarketplaceFilters = {
+  categoryName: string | undefined;
+  searchKeyword: string | undefined;
+  sort: MarketplaceSort;
+  minPrice: number | null;
+  maxPrice: number | null;
+  suburb: string | null;
+  openOnly: boolean;
+};
+
+async function getMarketplaceData(filters: MarketplaceFilters) {
+  const {
+    categoryName,
+    searchKeyword,
+    sort,
+    minPrice,
+    maxPrice,
+    suburb,
+    openOnly
+  } = filters;
+
   try {
     const supabase = await createSupabaseServerClient();
     const { data: categories } = await supabase
@@ -68,16 +103,36 @@ async function getMarketplaceData(
       .from("listings")
       .select("*")
       .eq("is_active", true)
-      .eq("admin_disabled", false)
-      // Open stores sort to the top of the grid so buyers see live
-      // sellers first. Created-at is the secondary key so newer
-      // listings still rank within each open/closed band.
-      .order("provider_is_open", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(24);
+      .eq("admin_disabled", false);
+
+    // Default sort: open stores first, newest within each open/closed band.
+    // Price-asc / price-desc overrides the open-first rank — buyers
+    // looking for cheapest are willing to filter by Open-now explicitly.
+    if (sort === "price_asc") {
+      listingsQuery = listingsQuery.order("price", { ascending: true });
+    } else if (sort === "price_desc") {
+      listingsQuery = listingsQuery.order("price", { ascending: false });
+    } else {
+      listingsQuery = listingsQuery
+        .order("provider_is_open", { ascending: false })
+        .order("created_at", { ascending: false });
+    }
+    listingsQuery = listingsQuery.limit(60);
 
     if (matchedCategory) {
       listingsQuery = listingsQuery.eq("category_id", matchedCategory.id);
+    }
+    if (minPrice !== null) {
+      listingsQuery = listingsQuery.gte("price", minPrice);
+    }
+    if (maxPrice !== null) {
+      listingsQuery = listingsQuery.lte("price", maxPrice);
+    }
+    if (suburb) {
+      listingsQuery = listingsQuery.eq("suburb", suburb);
+    }
+    if (openOnly) {
+      listingsQuery = listingsQuery.eq("provider_is_open", true);
     }
 
     const safeKeyword = sanitiseSearchKeyword(searchKeyword);
@@ -113,9 +168,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const activeCategory = params.category;
   const activeKeyword = params.q?.trim() || undefined;
+  const sort = sanitiseSort(params.sort);
+  const minPrice = sanitisePrice(params.min_price);
+  const maxPrice = sanitisePrice(params.max_price);
+  const suburb = sanitiseSuburb(params.suburb);
+  const openOnly = params.open_only === "1";
+
   const [{ listings, categories, matchedCategory, configured }, profile] =
     await Promise.all([
-      getMarketplaceData(activeCategory, activeKeyword),
+      getMarketplaceData({
+        categoryName: activeCategory,
+        searchKeyword: activeKeyword,
+        sort,
+        minPrice,
+        maxPrice,
+        suburb,
+        openOnly
+      }),
       getCurrentProfile().catch(() => null)
     ]);
 
@@ -129,14 +198,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="bg-mist" data-testid="page-home">
-      {/* Hero */}
+      {/* Hero — trimmed: badge row + headline. Body copy lives in the
+          marketing surfaces; the marketplace lands on the value prop. */}
       <section className="section-band">
-        <div className="page-shell gap-6 py-10 sm:py-14">
-          <div className="flex flex-col items-start gap-5">
+        <div className="page-shell gap-4 py-8 sm:py-12">
+          <div className="flex flex-col items-start gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-caption font-semibold uppercase tracking-widest text-leaf">
                 <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
-                South Africa&apos;s safest and most empowering marketplace
+                South Africa&apos;s safest marketplace
               </span>
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-sunset/15 px-3 py-1 text-caption font-semibold uppercase tracking-widest text-sunset"
@@ -150,13 +220,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               Anything <span className="text-brand-gradient">delivered</span>{" "}
               within an average of 40 minutes.
             </h1>
-            <p className="max-w-2xl text-body text-black/65 sm:text-base sm:leading-7">
-              Products, services, and errands in one marketplace. Secure
-              payments, approved-driver delivery, and trusted professionals at
-              your fingertips.
-            </p>
           </div>
         </div>
+      </section>
+
+      {/* Mobile category tiles — the discovery surface on small viewports.
+          Sits above the search heading so a buyer arriving on mobile sees
+          categories first, not the band heading. */}
+      <section className="page-shell sm:hidden pt-4">
+        <Suspense fallback={null}>
+          <CategoryTileGrid
+            activeCategory={activeCategory}
+            categories={categoryNames}
+            layout="mobile"
+          />
+        </Suspense>
       </section>
 
       {/* Browse band: sidebar + grid */}
@@ -232,43 +310,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         ) : null}
 
-        {/* Mobile-only horizontal category chips */}
-        <div
-          aria-label="Categories"
-          className="mt-5 flex gap-2 overflow-x-auto pb-1 sm:hidden"
-          data-testid="home-category-chip-list"
-        >
-          <Link
-            className={
-              activeCategory
-                ? "whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black/70"
-                : "whitespace-nowrap rounded-md border border-leaf bg-mint px-3 py-2 text-sm font-semibold text-leaf"
-            }
-            data-testid="home-category-chip-all"
-            href="/"
-          >
-            All
-          </Link>
-          {categoryNames.map((category) => {
-            const isActive =
-              activeCategory?.toLowerCase() === category.toLowerCase();
-            return (
-              <Link
-                className={
-                  isActive
-                    ? "whitespace-nowrap rounded-md border border-leaf bg-mint px-3 py-2 text-sm font-semibold text-leaf"
-                    : "whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-medium text-black/70"
-                }
-                data-testid="home-category-chip"
-                href={`/?category=${encodeURIComponent(category)}`}
-                key={category}
-              >
-                {category}
-              </Link>
-            );
-          })}
-        </div>
-
         <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:flex-row sm:items-start">
           {/* Desktop sidebar */}
           <aside
@@ -317,12 +358,50 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </div>
           </aside>
 
-          {/* Right pane: search + grid */}
+          {/* Right pane: filters + grid */}
           <div className="min-w-0 flex-1">
-            <HomeSearchInput
-              category={activeCategory}
-              defaultValue={params.q ?? ""}
-            />
+            {/* Desktop tile grid — a secondary discovery surface sitting
+                above the listings grid. Mobile uses the band above the
+                browse header. */}
+            <Suspense fallback={null}>
+              <CategoryTileGrid
+                activeCategory={activeCategory}
+                categories={categoryNames}
+                className="mb-5"
+                layout="desktop"
+              />
+            </Suspense>
+
+            {/* Desktop sticky filter strip + mobile filter trigger. The
+                mobile strip stays inline as a single button; the bottom
+                sheet handles the actual controls. */}
+            <div className="mb-4 flex items-center gap-3">
+              <Suspense fallback={null}>
+                <MarketplaceFilterStrip />
+              </Suspense>
+              <Suspense fallback={null}>
+                <FilterBottomSheet />
+              </Suspense>
+            </div>
+
+            {/* Active filter chips strip — only renders when at least
+                one filter is applied (chips read URL directly). */}
+            <Suspense fallback={null}>
+              <MarketplaceActiveFilters className="mb-4" />
+            </Suspense>
+
+            {/* Result count line — shows the current scope so the buyer
+                knows what they're looking at. */}
+            <p
+              className="mb-4 text-body-sm text-black/55"
+              data-testid="home-result-count"
+            >
+              <span className="font-semibold text-ink">{listings.length}</span>{" "}
+              {listings.length === 1 ? "listing" : "listings"}
+              {matchedCategory ? <> · {matchedCategory.name}</> : null}
+              {suburb ? <> · in {suburb}</> : null}
+              {openOnly ? <> · open now</> : null}
+            </p>
 
             {listings.length ? (
               <div className="mobile-grid mt-5">

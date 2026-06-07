@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
 import { CartIcon } from "@/components/cart-icon";
@@ -9,6 +10,8 @@ import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUrgentDeadlineForRole } from "@/lib/urgent-orders";
+import { AccountDropdown } from "@/components/account-dropdown";
+import { HeaderSearchInput } from "@/components/header-search-input";
 import { UrgentActionBanner } from "@/components/urgent-action-banner";
 import { APP_NAME } from "@/lib/constants";
 import { getAppUrl } from "@/lib/env";
@@ -109,153 +112,116 @@ export default async function RootLayout({
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"
         >
-          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            {/* Left cluster: logo + inline nav (Takealot-style) */}
-            <div className="flex items-center gap-4 sm:gap-6">
-              <Link
-                href="/"
-                className="flex items-center gap-2 font-semibold"
-                data-testid="nav-home-link"
-              >
-                <span className="brand-mark h-12 w-12">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    alt={`${APP_NAME} logo`}
-                    className="h-full w-full object-contain"
-                    src="/thumeka.png"
-                  />
-                </span>
-              </Link>
-              <nav
-                aria-label="Primary"
-                className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
-                data-testid="desktop-primary-nav"
-              >
-                <Link
-                  className="transition hover:text-leaf"
-                  data-testid="nav-support-link"
-                  href="/support"
-                >
-                  Support
-                </Link>
-                <span aria-hidden="true" className="h-5 w-px bg-black/15" />
-                <Link
-                  className="transition hover:text-leaf"
-                  data-testid="nav-sell-link"
-                  href="/auth/register"
-                >
-                  Sell on {APP_NAME}
-                </Link>
-                <span aria-hidden="true" className="h-5 w-px bg-black/15" />
-                <Link
-                  className="transition hover:text-leaf"
-                  data-testid="nav-drive-link"
-                  href="/auth/register"
-                >
-                  Drive for {APP_NAME}
-                </Link>
-              </nav>
+          {/* Row 1: logo + persistent search (desktop) + cart + account */}
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2 font-semibold"
+              data-testid="nav-home-link"
+            >
+              <span className="brand-mark h-11 w-11 sm:h-12 sm:w-12">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  alt={`${APP_NAME} logo`}
+                  className="h-full w-full object-contain"
+                  src="/thumeka.png"
+                />
+              </span>
+            </Link>
+
+            {/* Desktop search sits inline between logo and account cluster.
+                Wrapped in Suspense — useSearchParams() forces a client-side
+                bailout for static prerender otherwise. */}
+            <div className="hidden min-w-0 flex-1 sm:flex">
+              <Suspense fallback={<div className="h-10 w-full" />}>
+                <HeaderSearchInput />
+              </Suspense>
             </div>
 
-            {/* Right cluster: cart + auth links, text-style with separators */}
             <nav
               aria-label="Account"
-              className="hidden items-center gap-4 text-sm font-medium text-ink sm:flex"
+              className="flex shrink-0 items-center gap-2 sm:gap-3"
               data-testid="desktop-nav"
             >
-              {canShop ? (
-                <>
-                  <CartIcon />
-                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
-                </>
-              ) : null}
+              {canShop ? <CartIcon /> : null}
               {profile ? (
-                <>
-                  <Link
-                    className="transition hover:text-leaf"
-                    href={roleHomePath(profile.role)}
-                    data-testid="nav-dashboard-link"
-                  >
-                    Dashboard
-                  </Link>
-                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
-                  <Link
-                    className="transition hover:text-leaf"
-                    href="/auth/sign-out"
-                    data-testid="nav-sign-out-link"
-                  >
-                    Sign out
-                  </Link>
-                </>
+                <AccountDropdown
+                  dashboardHref={roleHomePath(profile.role)}
+                  email={profile.email}
+                  fullName={profile.full_name ?? null}
+                  role={profile.role}
+                />
               ) : (
                 <>
                   <Link
-                    className="transition hover:text-leaf"
-                    href="/auth/sign-in"
+                    className="hidden text-sm font-semibold text-ink transition hover:text-leaf sm:inline"
                     data-testid="nav-sign-in-link"
+                    href="/auth/sign-in"
                   >
                     Sign in
                   </Link>
-                  <span aria-hidden="true" className="h-5 w-px bg-black/15" />
                   <Link
-                    className="transition hover:text-leaf"
-                    href="/auth/register"
+                    className="rounded-full bg-ink px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-leaf"
                     data-testid="nav-register-link"
+                    href="/auth/register"
                   >
                     Register
                   </Link>
                 </>
               )}
-            </nav>
-            {/* Mobile cluster: cart icon stays out of the dropdown so it's
-                always one tap away even when the menu is closed. */}
-            <div className="flex items-center gap-1 sm:hidden">
-              {canShop ? <CartIcon /> : null}
-              <MobileNavMenu>
-              <Link className="btn-secondary" href="/" data-testid="mobile-nav-browse-link">
-                Browse
-              </Link>
-              <Link className="btn-secondary" href="/support" data-testid="mobile-nav-support-link">
-                Support
-              </Link>
-              <Link
-                className="btn-secondary"
-                data-testid="mobile-nav-sell-link"
-                href="/auth/register"
-              >
-                Sell on {APP_NAME}
-              </Link>
-              <Link
-                className="btn-secondary"
-                data-testid="mobile-nav-drive-link"
-                href="/auth/register"
-              >
-                Drive for {APP_NAME}
-              </Link>
-              {profile ? (
-                <>
+              {/* Mobile-only hamburger for any remaining nav links the
+                  account dropdown doesn't cover (Browse, Support). */}
+              <div className="sm:hidden">
+                <MobileNavMenu>
                   <Link
                     className="btn-secondary"
-                    href={roleHomePath(profile.role)}
-                    data-testid="mobile-nav-dashboard-link"
+                    data-testid="mobile-nav-browse-link"
+                    href="/"
                   >
-                    Dashboard
+                    Browse
                   </Link>
                   <Link
-                    className="btn-primary"
-                    href="/auth/sign-out"
-                    data-testid="mobile-nav-sign-out-link"
+                    className="btn-secondary"
+                    data-testid="mobile-nav-support-link"
+                    href="/support"
                   >
-                    Sign out
+                    Support
                   </Link>
-                </>
-              ) : (
-                <Link className="btn-primary" href="/auth/sign-in" data-testid="mobile-nav-sign-in-link">
-                  Sign in
-                </Link>
-              )}
-            </MobileNavMenu>
-            </div>
+                  {!profile ? (
+                    <>
+                      <Link
+                        className="btn-secondary"
+                        data-testid="mobile-nav-sell-link"
+                        href="/provider/apply"
+                      >
+                        Sell on {APP_NAME}
+                      </Link>
+                      <Link
+                        className="btn-secondary"
+                        data-testid="mobile-nav-drive-link"
+                        href="/driver/apply"
+                      >
+                        Drive for {APP_NAME}
+                      </Link>
+                      <Link
+                        className="btn-primary"
+                        data-testid="mobile-nav-sign-in-link"
+                        href="/auth/sign-in"
+                      >
+                        Sign in
+                      </Link>
+                    </>
+                  ) : null}
+                </MobileNavMenu>
+              </div>
+            </nav>
+          </div>
+
+          {/* Row 2: mobile-only persistent search underneath the logo row. */}
+          <div className="border-t border-black/5 px-4 py-2 sm:hidden">
+            <Suspense fallback={<div className="h-9 w-full" />}>
+              <HeaderSearchInput variant="compact" />
+            </Suspense>
           </div>
         </header>
         <main className="flex-1 pb-20 sm:pb-0" data-testid="app-main">
