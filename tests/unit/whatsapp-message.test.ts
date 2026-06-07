@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPaymentProofMessage } from "@/lib/whatsapp-message";
+import {
+  buildBugReportMessage,
+  buildPaymentProofMessage,
+  buildUrgentOrderHelpMessage
+} from "@/lib/whatsapp-message";
 
 // Intl's ZA currency formatter separates "R" from the amount with a
 // non-breaking space; use an explicit constant so assertions are unambiguous.
@@ -53,5 +57,31 @@ describe("buildPaymentProofMessage", () => {
     });
 
     expect(message).toContain(`R${NBSP}445,50`);
+  });
+});
+
+describe("buildBugReportMessage", () => {
+  it("produces the expected labelled template", () => {
+    const message = buildBugReportMessage();
+    expect(message).toContain("I'd like to report a bug");
+    expect(message).toContain("What I was doing:");
+    expect(message).toContain("What went wrong:");
+    expect(message).toContain("Device / browser:");
+  });
+});
+
+describe("buildUrgentOrderHelpMessage", () => {
+  it("includes the order ref when one is provided", () => {
+    const message = buildUrgentOrderHelpMessage(
+      "abcdef12-0000-4000-8000-000000000001"
+    );
+    expect(message).toContain("Order ref: #ABCDEF12");
+    expect(message).toContain("Issue:");
+  });
+
+  it("renders an empty ref when no order id is provided", () => {
+    const message = buildUrgentOrderHelpMessage();
+    expect(message).toContain("Order ref: ");
+    expect(message).toContain("Issue:");
   });
 });

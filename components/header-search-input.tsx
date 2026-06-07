@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -108,10 +108,18 @@ export function HeaderSearchInput({
       onSubmit={onSubmit}
       role="search"
     >
-      <Search
-        aria-hidden="true"
-        className="ml-2 h-4 w-4 flex-none text-black/40"
-      />
+      {isPending ? (
+        <Loader2
+          aria-hidden="true"
+          className="ml-2 h-4 w-4 flex-none animate-spin text-leaf"
+          data-testid="header-search-loading"
+        />
+      ) : (
+        <Search
+          aria-hidden="true"
+          className="ml-2 h-4 w-4 flex-none text-black/40"
+        />
+      )}
       <label className="sr-only" htmlFor="header-search-input">
         Search the marketplace
       </label>

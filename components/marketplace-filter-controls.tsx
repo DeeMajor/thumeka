@@ -126,7 +126,7 @@ export function MarketplaceFilterControls({
   return (
     <div
       aria-busy={isPending}
-      className={containerCls}
+      className={`${containerCls} ${isPending ? "opacity-60 transition-opacity" : "transition-opacity"}`}
       data-testid={`marketplace-filter-controls-${layout}`}
     >
       <label className={blockCls}>

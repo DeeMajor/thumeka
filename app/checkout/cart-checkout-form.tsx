@@ -7,6 +7,7 @@ import { ShoppingCart } from "lucide-react";
 import { createCartOrderRequestAction } from "@/app/checkout/actions";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useCart } from "@/components/cart-provider";
+import { SubmittingButton } from "@/components/submitting-button";
 import { formatMoney } from "@/lib/format";
 
 type CartCheckoutFormProps = {
@@ -372,14 +373,14 @@ export function CartCheckoutForm({
         />
       </label>
 
-      <button
+      <SubmittingButton
+        busyLabel="Placing order…"
         className="btn-primary w-full"
         data-testid="cart-checkout-submit-button"
         disabled={!quoteValid}
-        type="submit"
       >
         Submit order request
-      </button>
+      </SubmittingButton>
       {!quoteValid ? (
         <p className="text-center text-xs text-black/50">
           Calculate the delivery fee to see your total before submitting.
