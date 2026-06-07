@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, Clock, MapPin, ShoppingBag } from "lucide-react";
 import { Suspense } from "react";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
@@ -207,8 +207,36 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="bg-mist" data-testid="page-home">
-      {/* Hero has moved to /welcome. The page now lands directly on the
-          category band so search results sit right under the navbar. */}
+      {/* Hero — restored at the client's request. The full marketing
+          surface still lives at /welcome; this is the trimmed in-grid
+          version (badges row + headline only, no body paragraph). Hidden
+          while a keyword search is active so results sit right under
+          the navbar. */}
+      {!activeKeyword ? (
+        <section className="section-band" data-testid="home-hero">
+          <div className="page-shell gap-4 py-8 sm:py-12">
+            <div className="flex flex-col items-start gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-caption font-semibold uppercase tracking-widest text-leaf">
+                  <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
+                  South Africa&apos;s safest marketplace
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-sunset/15 px-3 py-1 text-caption font-semibold uppercase tracking-widest text-sunset"
+                  data-testid="home-hero-open-247-badge"
+                >
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open 24/7
+                </span>
+              </div>
+              <h1 className="max-w-3xl text-display-lg sm:text-display-xl">
+                Anything <span className="text-brand-gradient">delivered</span>{" "}
+                within an average of 40 minutes.
+              </h1>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Mobile category tiles — collapsed by default so search results
           sit directly under the navbar. Tap "Show categories" to reveal.
