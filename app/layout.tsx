@@ -112,8 +112,11 @@ export default async function RootLayout({
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"
         >
-          {/* Row 1: logo + persistent search (desktop) + cart + account */}
-          <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
+          {/* Row 1: logo + persistent search (desktop) + cart + account.
+              `justify-between` pushes the logo to the far left and the
+              action cluster to the far right so the mobile header reads
+              edge-to-edge instead of bunching on one side. */}
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
             <Link
               href="/"
               className="flex shrink-0 items-center gap-2 font-semibold"
@@ -140,7 +143,7 @@ export default async function RootLayout({
 
             <nav
               aria-label="Account"
-              className="flex shrink-0 items-center gap-2 sm:gap-3"
+              className="flex shrink-0 items-center gap-3 sm:gap-3"
               data-testid="desktop-nav"
             >
               {canShop ? <CartIcon /> : null}

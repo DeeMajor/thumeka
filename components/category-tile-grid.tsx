@@ -7,10 +7,15 @@ import {
   CATEGORY_TINT_CLASSES,
   getCategoryVisual
 } from "@/lib/category-visuals";
+import {
+  parseCategoryList,
+  serialiseCategoryList
+} from "@/lib/marketplace-filters";
 
 type CategoryTileGridProps = {
   categories: string[];
-  activeCategory: string | undefined;
+  /** Multi-select — zero or more active category names. */
+  activeCategories: string[];
   /** Mobile-only by default; pass true to render the desktop layout
    *  too. Homepage mounts it twice (mobile band + a denser desktop
    *  band) since the two layouts are quite different. */
@@ -26,13 +31,13 @@ type CategoryTileGridProps = {
  *   - Desktop: 6 columns × N rows, denser, sits above the listings grid
  *     as a secondary discovery surface beside the existing sidebar.
  *
- * Tapping a tile pushes `?category=Food` onto the URL (or clears the
- * param when tapping the currently-active tile). Other URL params
- * (search keyword, sort, price band) are preserved.
+ * Tapping a tile toggles it in the URL's comma-separated `?category=`
+ * list — buyers can pick more than one category at a time. Other URL
+ * params (search keyword, sort, price band) are preserved.
  */
 export function CategoryTileGrid({
   categories,
-  activeCategory,
+  activeCategories,
   layout,
   className
 }: CategoryTileGridProps) {
@@ -40,20 +45,26 @@ export function CategoryTileGrid({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  function urlFor(category: string | null): string {
+  function urlFor(nextSelection: string[]): string {
     const params = new URLSearchParams();
     searchParams.forEach((value, key) => {
       if (key !== "category") params.set(key, value);
     });
-    if (category) params.set("category", category);
+    const serialised = serialiseCategoryList(nextSelection);
+    if (serialised) params.set("category", serialised);
     const qs = params.toString();
     return qs ? `/?${qs}` : "/";
   }
 
   function onTap(category: string) {
-    const isActive =
-      activeCategory?.toLowerCase() === category.toLowerCase();
-    const next = isActive ? null : category;
+    // Re-read the URL so we don't lose selections made between renders
+    // (the prop is stale once a parallel tap is in flight).
+    const current = parseCategoryList(searchParams.get("category") ?? "");
+    const lower = category.toLowerCase();
+    const isActive = current.some((name) => name.toLowerCase() === lower);
+    const next = isActive
+      ? current.filter((name) => name.toLowerCase() !== lower)
+      : [...current, category];
     startTransition(() => {
       router.replace(urlFor(next), { scroll: false });
     });
@@ -72,8 +83,9 @@ export function CategoryTileGrid({
       data-testid={`category-tile-grid-${layout}`}
     >
       {categories.map((category) => {
-        const isActive =
-          activeCategory?.toLowerCase() === category.toLowerCase();
+        const isActive = activeCategories.some(
+          (name) => name.toLowerCase() === category.toLowerCase()
+        );
         const visual = getCategoryVisual(category);
         const tint = CATEGORY_TINT_CLASSES[visual.tint];
         const Icon = visual.icon;

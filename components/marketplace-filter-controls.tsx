@@ -140,6 +140,7 @@ export function MarketplaceFilterControls({
           value={currentSort}
         >
           <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
           <option value="price_asc">Price: low to high</option>
           <option value="price_desc">Price: high to low</option>
         </select>
