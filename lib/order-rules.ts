@@ -18,7 +18,9 @@ export type OrderRuleStatus =
   | "service_in_progress"
   | "completed"
   | "cancelled"
-  | "issue_reported";
+  | "issue_reported"
+  /** Provider didn't accept within the SLA window; cron auto-flipped it. */
+  | "expired";
 
 export type PaymentStatus =
   | "not_requested"
@@ -432,7 +434,8 @@ export const PROVIDER_NEEDS_ACTION_STATUSES = new Set<OrderRuleStatus>([
 export const PROVIDER_CLOSED_STATUSES = new Set<OrderRuleStatus>([
   "completed",
   "cancelled",
-  "provider_rejected"
+  "provider_rejected",
+  "expired"
 ]);
 
 export function getProviderOrderBucket(status: string): ProviderOrderBucket {

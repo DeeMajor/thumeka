@@ -4,6 +4,7 @@ import { ArrowRight, ClipboardList, Store } from "lucide-react";
 import { updateProviderBusinessNameAction } from "@/app/provider/dashboard/actions";
 import { CreateListingPanel } from "@/app/provider/dashboard/create-listing-panel";
 import { ProviderOrdersBoard } from "@/app/provider/dashboard/provider-orders-board";
+import { StoreOpenStatusPanel } from "@/app/provider/dashboard/store-open-status-panel";
 import { InstallPwaNudge } from "@/components/install-pwa-nudge";
 import { ListingImage } from "@/components/listing-image";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
@@ -39,6 +40,8 @@ type ProviderDashboardPageProps = {
     listing_deleted?: string;
     listing_reactivated?: string;
     listing_updated?: string;
+    store_opened?: string;
+    store_closed?: string;
     tab?: string;
   }>;
 };
@@ -220,6 +223,33 @@ export default async function ProviderDashboardPage({
               Accept orders quickly to unlock EFT instructions for your buyers.
             </p>
           </div>
+
+          {/* Open/Closed store toggle. The cron sweep can auto-flip
+              `is_open` to false after 3 missed orders; this panel is the
+              way back. */}
+          <StoreOpenStatusPanel
+            isOpen={providerProfile.is_open}
+            consecutiveMissedOrders={providerProfile.consecutive_missed_orders ?? 0}
+            closedAt={providerProfile.closed_at}
+          />
+          {params.store_opened ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="provider-store-opened-message"
+            >
+              Your store is back open. New orders will start flowing in.
+            </div>
+          ) : null}
+          {params.store_closed ? (
+            <div
+              className="rounded-md border border-black/10 bg-black/5 p-3 text-sm text-ink"
+              data-testid="provider-store-closed-message"
+            >
+              Your store is closed. Buyers can still browse your listings but
+              can&apos;t place new orders.
+            </div>
+          ) : null}
+
           {params.accepted ? (
             <div
               className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"

@@ -7,6 +7,9 @@ import { CartIcon } from "@/components/cart-icon";
 import { CartProvider } from "@/components/cart-provider";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { canShopAsBuyer, getCurrentProfile } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUrgentDeadlineForRole } from "@/lib/urgent-orders";
+import { UrgentActionBanner } from "@/components/urgent-action-banner";
 import { APP_NAME } from "@/lib/constants";
 import { getAppUrl } from "@/lib/env";
 import { roleHomePath } from "@/lib/routes";
@@ -60,6 +63,28 @@ export default async function RootLayout({
 }>) {
   const profile = await getCurrentProfile().catch(() => null);
   const canShop = canShopAsBuyer(profile);
+
+  // Urgent-action banner across the top of every page when signed-in
+  // and there's a pending order with an SLA running. Per-role queries
+  // are role-restricted so a buyer doesn't see provider/admin work.
+  let urgent: Awaited<ReturnType<typeof getUrgentDeadlineForRole>> | null =
+    null;
+  if (profile) {
+    try {
+      const supabase = await createSupabaseServerClient();
+      urgent = await getUrgentDeadlineForRole(supabase, profile.role, profile.id);
+    } catch {
+      // Banner is best-effort — never break the page render over it.
+      urgent = null;
+    }
+  }
+  const urgentHref =
+    profile?.role === "provider"
+      ? "/provider/dashboard"
+      : profile?.role === "admin"
+        ? "/admin/dashboard"
+        : "/buyer/orders";
+
   return (
     <html lang="en-ZA" className={jakarta.variable} suppressHydrationWarning>
       <body
@@ -67,6 +92,19 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <CartProvider>
+        {urgent ? (
+          <UrgentActionBanner
+            deadline={urgent.deadline}
+            href={urgentHref}
+            kind={urgent.kind}
+            startedAt={
+              urgent.kind === "accept" || urgent.kind === "wait_for_seller"
+                ? undefined
+                : undefined
+            }
+            totalCount={urgent.totalCount}
+          />
+        ) : null}
         <header
           className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur"
           data-testid="site-header"

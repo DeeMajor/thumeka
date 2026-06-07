@@ -15,6 +15,7 @@ import {
 } from "@/app/admin/dashboard/actions";
 import { AdminPager } from "@/components/admin-pager";
 import { OrderAgeChip } from "@/components/order-age-chip";
+import { OrderCountdown } from "@/components/order-countdown";
 import { OrderContactBlock } from "@/components/order-contact-block";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { StatusPill } from "@/components/status-pill";
@@ -873,6 +874,25 @@ export default async function AdminDashboardPage({
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                          {order.eft_confirm_due_at &&
+                          order.payment_status === "eft_submitted" ? (
+                            <OrderCountdown
+                              data-testid={`admin-order-${order.id.slice(0, 8)}-eft-countdown`}
+                              deadline={order.eft_confirm_due_at}
+                              label="Confirm EFT in"
+                              size="sm"
+                            />
+                          ) : null}
+                          {order.driver_assign_due_at &&
+                          order.payment_status === "confirmed" &&
+                          !order.driver_id ? (
+                            <OrderCountdown
+                              data-testid={`admin-order-${order.id.slice(0, 8)}-driver-countdown`}
+                              deadline={order.driver_assign_due_at}
+                              label="Assign in"
+                              size="sm"
+                            />
+                          ) : null}
                           <OrderAgeChip
                             createdAt={order.created_at}
                             testIdPrefix={`admin-order-${order.id.slice(0, 8)}`}

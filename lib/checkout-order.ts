@@ -8,7 +8,11 @@ import { sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
 import { sendPush } from "@/lib/push";
 import { orderRef, pushEvents } from "@/lib/push-events";
-import type { ProfileRow } from "@/lib/database.types";
+import type {
+  AdminSettingsRow,
+  ProfileRow
+} from "@/lib/database.types";
+import { computeAcceptanceDeadline } from "@/lib/sla";
 
 export type CheckoutLineItemInput = {
   listingId: string;
@@ -178,6 +182,22 @@ export async function createOrderFromLineItems({
     0
   );
 
+  // Provider acceptance deadline. Read the SLA window from admin_settings
+  // (default 5 minutes per migration 001). When unset, the helper falls
+  // back to SLA_DEFAULTS. The cron sweep (migration 020) flips
+  // status -> 'expired' for any order_requested past expires_at.
+  const { data: settingsRow } = await supabase
+    .from("admin_settings")
+    .select(
+      "provider_acceptance_window_minutes, eft_confirm_window_minutes, driver_assign_window_minutes"
+    )
+    .limit(1)
+    .maybeSingle();
+  const expiresAt = computeAcceptanceDeadline(
+    new Date(),
+    settingsRow as Partial<AdminSettingsRow> | null
+  );
+
   // Insert the orders row first so we have an id for order_items FKs.
   const { data: orderRow, error: orderError } = await supabase
     .from("orders")
@@ -212,7 +232,8 @@ export async function createOrderFromLineItems({
       delivery_commission_amount: quote.deliveryCommissionAmount,
       provider_earning: quote.providerEarning,
       driver_earning: quote.driverEarning,
-      payment_status: "not_requested"
+      payment_status: "not_requested",
+      expires_at: expiresAt.toISOString()
     })
     .select("id")
     .single();

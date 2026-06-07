@@ -110,15 +110,42 @@ export default async function ListingPage({ params }: ListingPageProps) {
               {listing.availability_notes}
             </p>
           ) : null}
-          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
-            <Link
-              className="btn-primary inline-flex items-center justify-center gap-2"
-              data-testid="listing-request-order-link"
-              href={`/checkout/${listing.id}`}
+          {listing.provider_is_open === false ? (
+            <div
+              className="mt-4 rounded-lg border border-black/15 bg-black/5 p-3"
+              data-testid="listing-detail-closed-panel"
             >
-              Checkout
-            </Link>
-            {canShop ? (
+              <p className="text-body-sm font-semibold text-ink">
+                This seller is closed right now
+              </p>
+              <p className="mt-1 text-caption text-black/60">
+                Listings stay browsable but you can&apos;t place a new order
+                until they reopen.
+              </p>
+            </div>
+          ) : null}
+          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
+            {listing.provider_is_open === false ? (
+              <button
+                aria-disabled="true"
+                className="cursor-not-allowed rounded-md border border-black/10 bg-black/5 px-4 py-2 text-sm font-semibold text-black/40"
+                data-testid="listing-request-order-disabled"
+                disabled
+                type="button"
+                title="This seller is closed right now."
+              >
+                Seller closed
+              </button>
+            ) : (
+              <Link
+                className="btn-primary inline-flex items-center justify-center gap-2"
+                data-testid="listing-request-order-link"
+                href={`/checkout/${listing.id}`}
+              >
+                Checkout
+              </Link>
+            )}
+            {canShop && listing.provider_is_open !== false ? (
               <AddToCartButton
                 data-testid="listing-detail-add-to-cart"
                 item={{

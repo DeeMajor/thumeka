@@ -20,6 +20,7 @@ import type {
 import { sendEmail } from "@/lib/email";
 import { sendPush } from "@/lib/push";
 import { orderRef, pushEvents } from "@/lib/push-events";
+import { computeDriverAssignDeadline } from "@/lib/sla";
 import { getAppUrl } from "@/lib/env";
 import {
   assignDriver,
@@ -393,13 +394,32 @@ export async function confirmEftPaymentAction(formData: FormData) {
     redirectWithError(error instanceof Error ? error.message : "Unable to confirm EFT");
   }
 
+  // Driver-assign SLA starts now (payment confirmed). Read the admin
+  // settings window so future changes flow through without a code edit.
+  const { data: slaSettings } = await supabase
+    .from("admin_settings")
+    .select(
+      "provider_acceptance_window_minutes, eft_confirm_window_minutes, driver_assign_window_minutes"
+    )
+    .limit(1)
+    .maybeSingle();
+  const driverAssignDueAt = computeDriverAssignDeadline(
+    new Date(),
+    slaSettings
+  );
+
   // Atomic guard against double-click races. Restrict the update to orders
   // still in the pre-confirmation state — if another admin (or the same admin
   // double-clicking) already confirmed it, the row is skipped and we bail
   // before writing transactions or events twice.
   const { data: updatedRows, error: updateError } = await supabase
     .from("orders")
-    .update(buildOrderUpdate(result.order))
+    .update({
+      ...buildOrderUpdate(result.order),
+      // EFT-confirm done; driver-assign window starts.
+      eft_confirm_due_at: null,
+      driver_assign_due_at: driverAssignDueAt.toISOString()
+    })
     .eq("id", existingOrder.id)
     .in("payment_status", ["awaiting_buyer_eft", "eft_submitted"])
     .select("id");
@@ -539,7 +559,11 @@ export async function assignDriverAction(formData: FormData) {
 
   const { error: updateError } = await supabase
     .from("orders")
-    .update(buildOrderUpdate(assignedOrder))
+    .update({
+      ...buildOrderUpdate(assignedOrder),
+      // Driver assigned — clear the admin's driver-assign SLA window.
+      driver_assign_due_at: null
+    })
     .eq("id", existingOrder.id);
 
   if (updateError) {

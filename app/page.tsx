@@ -69,6 +69,10 @@ async function getMarketplaceData(
       .select("*")
       .eq("is_active", true)
       .eq("admin_disabled", false)
+      // Open stores sort to the top of the grid so buyers see live
+      // sellers first. Created-at is the secondary key so newer
+      // listings still rank within each open/closed band.
+      .order("provider_is_open", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(24);
 
@@ -322,9 +326,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
             {listings.length ? (
               <div className="mobile-grid mt-5">
-                {listings.map((listing) => (
+                {listings.map((listing) => {
+                  const isOpen = listing.provider_is_open !== false;
+                  const responseRate = Number(
+                    listing.provider_response_rate_pct ?? 100
+                  );
+                  const showResponseRate =
+                    Number.isFinite(responseRate) && responseRate < 95;
+                  return (
                   <Link
-                    className="rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4"
+                    className={`rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4 ${
+                      isOpen ? "ring-2 ring-leaf/30" : "opacity-80"
+                    }`}
+                    data-listing-open={isOpen}
                     data-testid="listing-card"
                     href={`/listings/${listing.id}`}
                     key={listing.id}
@@ -332,10 +346,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <div className="relative mb-2 sm:mb-4">
                       <ListingImage
                         alt={listing.title}
-                        className="relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3]"
+                        className={`relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3] ${
+                          isOpen ? "" : "opacity-70"
+                        }`}
                         storagePath={listing.image_url}
                       />
-                      {canShop ? (
+                      {/* OPEN / Closed pill, top-left of the image. Visible
+                          on mobile too — the trust signal matters most for
+                          buyers deciding mid-scroll. */}
+                      <span
+                        className={`absolute left-1.5 top-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest sm:left-2 sm:top-2 ${
+                          isOpen
+                            ? "bg-leaf text-white"
+                            : "bg-black/55 text-white"
+                        }`}
+                        data-testid={`listing-card-${listing.id.slice(0, 8)}-open-badge`}
+                      >
+                        {isOpen ? "Open" : "Closed"}
+                      </span>
+                      {canShop && isOpen ? (
                         <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
                           <AddToCartButton
                             data-testid={`listing-card-${listing.id.slice(0, 8)}-add`}
@@ -373,6 +402,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         {listing.business_name}
                       </p>
                     ) : null}
+                    {showResponseRate ? (
+                      <p
+                        className="mt-0.5 text-[10px] font-medium text-sunset sm:text-caption"
+                        data-testid={`listing-card-${listing.id.slice(0, 8)}-response-rate`}
+                      >
+                        Responds to {Math.round(responseRate)}% of orders
+                      </p>
+                    ) : null}
                     <p className="mt-2 hidden line-clamp-1 text-sm leading-6 text-black/60 sm:block">
                       {listing.description}
                     </p>
@@ -381,7 +418,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       <span className="truncate">{listing.suburb ?? "—"}</span>
                     </p>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="mt-5">

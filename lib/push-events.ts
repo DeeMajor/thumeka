@@ -69,6 +69,14 @@ export const pushEvents = {
     };
   },
 
+  buyerOrderExpired(providerName: string): PushPayload {
+    return {
+      title: "Seller didn't respond",
+      body: `${providerName} didn't accept in time. Tap to browse alternatives.`,
+      url: "/listings"
+    };
+  },
+
   driverNewAssignment(suburb: string, distanceKm: number | string): PushPayload {
     const km = typeof distanceKm === "number" ? distanceKm.toFixed(1) : distanceKm;
     return {

@@ -45,6 +45,16 @@ export type ProviderProfileRow = {
   rejection_reason: string | null;
   admin_notes: string | null;
   approved_at: string | null;
+  /** Provider availability. False = store is closed; new orders shouldn't be
+   *  placed. Toggled manually OR flipped by the SLA cron after N misses. */
+  is_open: boolean;
+  /** Reset on accept, incremented on cron auto-expire. Crosses the threshold
+   *  → auto-close. */
+  consecutive_missed_orders: number;
+  /** Rolling 30-day accept rate, recomputed on accept + auto-expire. */
+  response_rate_pct: string;
+  /** When the store last closed (manual or auto). Null while open. */
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -99,6 +109,11 @@ export type ListingRow = {
   availability_notes: string | null;
   is_active: boolean;
   admin_disabled: boolean;
+  /** Denormalised from provider_profiles.is_open. Marketplace sorts by
+   *  this DESC and renders an OPEN/Closed pill accordingly. */
+  provider_is_open: boolean;
+  /** Denormalised from provider_profiles.response_rate_pct. */
+  provider_response_rate_pct: string;
   created_at: string;
   updated_at: string;
 };
@@ -145,6 +160,15 @@ export type OrderRow = {
   accepted_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
+  /** Provider's acceptance deadline. Set on order creation; null once the
+   *  order moves past order_requested. */
+  expires_at: string | null;
+  /** Admin's EFT-confirm deadline. Set when buyer marks as paid; cleared
+   *  on confirm. */
+  eft_confirm_due_at: string | null;
+  /** Admin's driver-assign deadline. Set on payment_confirmed; cleared
+   *  on driver_assigned. */
+  driver_assign_due_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -178,6 +202,10 @@ export type AdminSettingsRow = {
   payout_reference_prefix: string;
   provider_location_warning_threshold_km: string;
   provider_acceptance_window_minutes: number;
+  /** Admin's EFT-confirm SLA in minutes. Drives `eft_confirm_due_at`. */
+  eft_confirm_window_minutes: number;
+  /** Admin's driver-assign SLA in minutes. Drives `driver_assign_due_at`. */
+  driver_assign_window_minutes: number;
   created_at: string;
   updated_at: string;
 };

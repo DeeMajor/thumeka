@@ -6,6 +6,7 @@ import { useState } from "react";
 import { acceptProviderOrderAction } from "@/app/provider/dashboard/actions";
 import { Drawer } from "@/components/drawer";
 import { EmptyState } from "@/components/empty-state";
+import { OrderCountdown } from "@/components/order-countdown";
 import { StatusPill } from "@/components/status-pill";
 import type { OrderItemRow, OrderRow } from "@/lib/database.types";
 import { formatMoney } from "@/lib/format";
@@ -130,6 +131,16 @@ export function ProviderOrdersBoard({
                               >
                                 × {order.quantity}
                               </span>
+                            ) : null}
+                            {order.expires_at &&
+                            order.status === "order_requested" ? (
+                              <OrderCountdown
+                                data-testid="provider-order-countdown"
+                                deadline={order.expires_at}
+                                label="Accept in"
+                                size="sm"
+                                startedAt={order.created_at}
+                              />
                             ) : null}
                           </p>
                           <p className="mt-1 font-semibold">{order.buyer_name}</p>
