@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { createOrderRequestAction } from "@/app/checkout/[listingId]/actions";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { SubmittingButton } from "@/components/submitting-button";
 import { formatMoney } from "@/lib/format";
 
 type CheckoutFormProps = {
@@ -265,14 +266,14 @@ export function CheckoutForm({
         <textarea className="input min-h-28" data-testid="checkout-buyer-notes-input" name="buyer_notes" />
       </label>
 
-      <button
+      <SubmittingButton
+        busyLabel="Placing order…"
         className="btn-primary w-full"
         data-testid="checkout-submit-button"
         disabled={!quoteValid}
-        type="submit"
       >
         Submit order request
-      </button>
+      </SubmittingButton>
       {!quoteValid ? (
         <p className="text-center text-xs text-black/50">
           Calculate the delivery fee to see your total before submitting.

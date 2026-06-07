@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 type HomeSearchInputProps = {
   /** Initial value from the server-rendered ?q=… */
@@ -86,7 +86,18 @@ export function HomeSearchInput({ defaultValue, category }: HomeSearchInputProps
       onSubmit={onSubmit}
     >
       <label className="flex min-w-0 flex-1 items-center gap-2 px-2">
-        <Search aria-hidden="true" className="h-4 w-4 flex-none text-black/45" />
+        {isPending ? (
+          <Loader2
+            aria-hidden="true"
+            className="h-4 w-4 flex-none animate-spin text-leaf"
+            data-testid="home-search-loading"
+          />
+        ) : (
+          <Search
+            aria-hidden="true"
+            className="h-4 w-4 flex-none text-black/45"
+          />
+        )}
         <span className="sr-only">Search listings</span>
         <input
           aria-busy={isPending}

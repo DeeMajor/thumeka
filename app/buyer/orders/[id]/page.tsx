@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { markEftSubmittedAction } from "@/app/buyer/orders/actions";
 import { OrderCountdown } from "@/components/order-countdown";
 import { StatusPill } from "@/components/status-pill";
+import { SubmittingButton } from "@/components/submitting-button";
+import { WhatsappHelpPill } from "@/components/whatsapp-help-pill";
 import { requireRole } from "@/lib/auth";
 import type {
   AdminSettingsRow,
@@ -363,13 +365,13 @@ export default async function BuyerOrderDetailPage({
               {order.payment_status === "awaiting_buyer_eft" ? (
                 <form action={markEftSubmittedAction}>
                   <input name="order_id" type="hidden" value={order.id} />
-                  <button
+                  <SubmittingButton
+                    busyLabel="Sending…"
                     className="btn-secondary"
                     data-testid="buyer-order-detail-mark-pop-sent-button"
-                    type="submit"
                   >
                     I sent the proof
-                  </button>
+                  </SubmittingButton>
                 </form>
               ) : null}
             </div>
@@ -452,6 +454,7 @@ export default async function BuyerOrderDetailPage({
           </div>
         ) : null}
       </section>
+      <WhatsappHelpPill orderId={order.id} />
     </div>
   );
 }

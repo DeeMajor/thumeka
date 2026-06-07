@@ -8,6 +8,7 @@ import { Drawer } from "@/components/drawer";
 import { EmptyState } from "@/components/empty-state";
 import { OrderCountdown } from "@/components/order-countdown";
 import { StatusPill } from "@/components/status-pill";
+import { SubmittingButton } from "@/components/submitting-button";
 import type { OrderItemRow, OrderRow } from "@/lib/database.types";
 import { formatMoney } from "@/lib/format";
 import { getProviderOrderBucket, type ProviderOrderBucket } from "@/lib/order-rules";
@@ -423,13 +424,13 @@ function OrderDetail({
               Delivery fee was calculated from the buyer&apos;s address at
               checkout — accepting confirms the order at this total.
             </p>
-            <button
+            <SubmittingButton
+              busyLabel="Accepting…"
               className="btn-primary w-full"
               data-testid="provider-order-accept-button"
-              type="submit"
             >
               Accept order
-            </button>
+            </SubmittingButton>
           </form>
         </Section>
       ) : null}

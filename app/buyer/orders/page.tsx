@@ -11,6 +11,8 @@ import { OrderCountdown } from "@/components/order-countdown";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { StatusPill } from "@/components/status-pill";
+import { SubmittingButton } from "@/components/submitting-button";
+import { WhatsappHelpPill } from "@/components/whatsapp-help-pill";
 import { requireRole } from "@/lib/auth";
 import type { AdminSettingsRow, OrderRow } from "@/lib/database.types";
 import { formatMoney, getGreeting } from "@/lib/format";
@@ -367,13 +369,13 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                                   type="hidden"
                                   value={order.id}
                                 />
-                                <button
+                                <SubmittingButton
+                                  busyLabel="Sending…"
                                   className="btn-secondary"
                                   data-testid="buyer-order-mark-pop-sent-button"
-                                  type="submit"
                                 >
                                   I sent the proof
-                                </button>
+                                </SubmittingButton>
                               </form>
                             ) : (
                               <span
@@ -431,6 +433,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
           />
         )}
       </section>
+      <WhatsappHelpPill />
     </div>
   );
 }

@@ -12,10 +12,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUrgentDeadlineForRole } from "@/lib/urgent-orders";
 import { AccountDropdown } from "@/components/account-dropdown";
 import { HeaderSearchInput } from "@/components/header-search-input";
+import { ReplayOnboardingLink } from "@/components/onboarding-overlay";
 import { UrgentActionBanner } from "@/components/urgent-action-banner";
 import { APP_NAME } from "@/lib/constants";
 import { getAppUrl } from "@/lib/env";
 import { roleHomePath } from "@/lib/routes";
+import { createWhatsAppUrl } from "@/lib/support";
+import { buildBugReportMessage } from "@/lib/whatsapp-message";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -66,6 +69,10 @@ export default async function RootLayout({
 }>) {
   const profile = await getCurrentProfile().catch(() => null);
   const canShop = canShopAsBuyer(profile);
+  // Pre-build the WhatsApp "Report a bug" URL once per request — same
+  // helper the in-app POP buttons use; falls back to null when the
+  // env isn't set so we don't render a dead link.
+  const bugReportUrl = createWhatsAppUrl(buildBugReportMessage());
 
   // Urgent-action banner across the top of every page when signed-in
   // and there's a pending order with an SLA running. Per-role queries
@@ -129,6 +136,13 @@ export default async function RootLayout({
                   className="h-full w-full object-contain"
                   src="/thumeka.png"
                 />
+              </span>
+              {/* "BETA" pill — drives off env so we can flip GA later. */}
+              <span
+                className="rounded-full bg-sunset/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sunset"
+                data-testid="nav-beta-pill"
+              >
+                Beta
               </span>
             </Link>
 
@@ -298,6 +312,32 @@ export default async function RootLayout({
                   <Link className="text-ink hover:text-leaf" href="/support">
                     WhatsApp support
                   </Link>
+                </li>
+                {bugReportUrl ? (
+                  <li>
+                    <a
+                      className="text-ink hover:text-leaf"
+                      data-testid="footer-report-bug-link"
+                      href={bugReportUrl}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      Report a bug
+                    </a>
+                  </li>
+                ) : (
+                  <li>
+                    <a
+                      className="text-ink hover:text-leaf"
+                      data-testid="footer-report-bug-fallback"
+                      href="mailto:admin@thumeka.co.za?subject=Bug%20report"
+                    >
+                      Report a bug
+                    </a>
+                  </li>
+                )}
+                <li>
+                  <ReplayOnboardingLink className="text-ink hover:text-leaf" />
                 </li>
                 <li>
                   <Link className="text-ink hover:text-leaf" href="/auth/sign-in">

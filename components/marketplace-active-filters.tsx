@@ -128,7 +128,9 @@ export function MarketplaceActiveFilters({
     <div
       aria-busy={isPending}
       aria-label="Active filters"
-      className={`flex flex-wrap items-center gap-2 ${className ?? ""}`}
+      className={`flex flex-wrap items-center gap-2 transition-opacity ${
+        isPending ? "opacity-60" : ""
+      } ${className ?? ""}`}
       data-testid="marketplace-active-filters"
     >
       {chips.map((chip) => (

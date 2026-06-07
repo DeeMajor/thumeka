@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 
 import { CartCheckoutForm } from "@/app/checkout/cart-checkout-form";
+import { WhatsappHelpPill } from "@/components/whatsapp-help-pill";
 import { requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export default async function CartCheckoutPage({ searchParams }: CheckoutPagePro
           defaultWhatsapp={profile.phone ?? ""}
         />
       </div>
+      <WhatsappHelpPill />
     </div>
   );
 }
