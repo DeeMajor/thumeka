@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  ShieldCheck,
   Sparkles,
   Truck,
   X,
@@ -25,16 +24,10 @@ type Card = {
 
 const CARDS: Card[] = [
   {
-    icon: ShieldCheck,
-    tint: "leaf",
-    title: "South Africa's safest marketplace",
-    body: "Your money stays safe until the seller accepts. If they don't respond in time, we hand the cash straight back."
-  },
-  {
     icon: Clock,
     tint: "sunset",
     title: "Open 24/7",
-    body: "Browse, order, and pay around the clock. Open sellers rise to the top of the grid so you know who's live right now."
+    body: "Browse, order, and pay around the clock. Live stores rise to the top of the grid so you know who's open right now."
   },
   {
     icon: Truck,

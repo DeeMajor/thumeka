@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowRight, Clock, ShoppingBag, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -7,7 +7,7 @@ import { APP_NAME } from "@/lib/constants";
 export const metadata: Metadata = {
   title: `Why ${APP_NAME}?`,
   description:
-    "Thumeka is South Africa's safest marketplace — products, services, errands, and deliveries from trusted local sellers. Buyer money stays safe until the seller accepts."
+    "Thumeka is South Africa's safest marketplace — products, services, errands, and deliveries from trusted local stores."
 };
 
 export default function WelcomePage() {
@@ -35,9 +35,8 @@ export default function WelcomePage() {
             </h1>
             <p className="max-w-2xl text-body text-black/65 sm:text-base sm:leading-7">
               {APP_NAME} is a Durban-first marketplace for products, services,
-              errands, and deliveries. Browse trusted local sellers, pay by EFT,
-              and let approved drivers handle the last mile — your money stays
-              safe until the seller accepts.
+              errands, and deliveries. Browse trusted local stores, pay by
+              EFT, and let approved drivers handle the last mile.
             </p>
             <Link
               className="btn-primary inline-flex items-center gap-2"
@@ -52,25 +51,15 @@ export default function WelcomePage() {
       </section>
 
       <section className="page-shell py-12">
-        <div className="grid gap-5 sm:grid-cols-3">
-          <article className="rounded-2xl border border-black/10 bg-white p-5 shadow-soft">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-mint text-leaf">
-              <ShieldCheck aria-hidden="true" className="h-5 w-5" />
-            </span>
-            <h2 className="mt-3 text-h3 text-ink">Safe by design</h2>
-            <p className="mt-1 text-body-sm text-black/60">
-              Your EFT is held until the seller accepts the order. If they
-              don&apos;t respond in time, we hand the cash straight back.
-            </p>
-          </article>
+        <div className="grid gap-5 sm:grid-cols-2">
           <article className="rounded-2xl border border-black/10 bg-white p-5 shadow-soft">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sunset/15 text-sunset">
               <Clock aria-hidden="true" className="h-5 w-5" />
             </span>
             <h2 className="mt-3 text-h3 text-ink">Always on</h2>
             <p className="mt-1 text-body-sm text-black/60">
-              Browse, order, and pay around the clock. Open sellers rise to the
-              top of the grid so you know who&apos;s live right now.
+              Browse, order, and pay around the clock. Live stores rise to
+              the top of the grid so you know who&apos;s open right now.
             </p>
           </article>
           <article className="rounded-2xl border border-black/10 bg-white p-5 shadow-soft">
@@ -79,7 +68,7 @@ export default function WelcomePage() {
             </span>
             <h2 className="mt-3 text-h3 text-ink">Built for Durban</h2>
             <p className="mt-1 text-body-sm text-black/60">
-              Local sellers, approved drivers, and suburb-by-suburb delivery —
+              Local stores, approved drivers, and suburb-by-suburb delivery —
               from Berea to Umhlanga, Pinetown to the Bluff.
             </p>
           </article>
