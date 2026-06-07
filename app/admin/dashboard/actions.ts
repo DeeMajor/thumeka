@@ -18,6 +18,8 @@ import type {
   ProviderProfileRow
 } from "@/lib/database.types";
 import { sendEmail } from "@/lib/email";
+import { sendPush } from "@/lib/push";
+import { orderRef, pushEvents } from "@/lib/push-events";
 import { getAppUrl } from "@/lib/env";
 import {
   assignDriver,
@@ -464,6 +466,34 @@ export async function confirmEftPaymentAction(formData: FormData) {
     }).catch((err: Error) => console.warn("[email] EFT confirmed email failed:", err.message));
   }
 
+  // Push the buyer + provider. We push the provider via their
+  // `user_id` from provider_profiles. Wrapped so a push failure can't
+  // break payment confirmation.
+  try {
+    await sendPush({
+      userId: existingOrder.buyer_id,
+      ...pushEvents.buyerPaymentConfirmed()
+    });
+  } catch (err) {
+    console.warn("[push] buyer payment-confirmed failed:", (err as Error).message);
+  }
+
+  try {
+    const { data: providerProfile } = await supabase
+      .from("provider_profiles")
+      .select("user_id")
+      .eq("id", existingOrder.provider_id)
+      .maybeSingle();
+    if (providerProfile) {
+      await sendPush({
+        userId: providerProfile.user_id,
+        ...pushEvents.providerPaymentConfirmed(orderRef(existingOrder.id))
+      });
+    }
+  } catch (err) {
+    console.warn("[push] provider payment-confirmed failed:", (err as Error).message);
+  }
+
   revalidatePath("/admin/dashboard");
   revalidatePath("/buyer/orders");
   redirect(`/admin/dashboard?eft_confirmed=${existingOrder.id}`);
@@ -584,6 +614,20 @@ export async function assignDriverAction(formData: FormData) {
   Promise.all(emailPromises).catch((err: Error) =>
     console.warn("[email] Driver assignment email failed:", err.message)
   );
+
+  // Push the driver — they need to know about new deliveries even when
+  // the tab is closed. Wrapped so push failures can't break assignment.
+  try {
+    await sendPush({
+      userId: driverProfile.user_id,
+      ...pushEvents.driverNewAssignment(
+        existingOrder.suburb ?? "your area",
+        Number(existingOrder.delivery_distance_km ?? 0)
+      )
+    });
+  } catch (err) {
+    console.warn("[push] driver new-assignment failed:", (err as Error).message);
+  }
 
   revalidatePath("/admin/dashboard");
   revalidatePath("/driver/dashboard");

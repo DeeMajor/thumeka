@@ -4,7 +4,9 @@ import { ArrowRight, ClipboardList, Store } from "lucide-react";
 import { updateProviderBusinessNameAction } from "@/app/provider/dashboard/actions";
 import { CreateListingPanel } from "@/app/provider/dashboard/create-listing-panel";
 import { ProviderOrdersBoard } from "@/app/provider/dashboard/provider-orders-board";
+import { InstallPwaNudge } from "@/components/install-pwa-nudge";
 import { ListingImage } from "@/components/listing-image";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { requireRole } from "@/lib/auth";
 import type {
@@ -262,6 +264,8 @@ export default async function ProviderDashboardPage({
               {params.error}
             </div>
           ) : null}
+          <PushNotificationPrompt role="provider" />
+          <InstallPwaNudge />
         </div>
       </section>
 

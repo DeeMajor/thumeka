@@ -7,6 +7,8 @@ import { requireRole } from "@/lib/auth";
 import { getDeliveryQuote } from "@/lib/delivery";
 import { sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
+import { sendPush } from "@/lib/push";
+import { orderRef, pushEvents } from "@/lib/push-events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validateAndNormalizeZaPhone } from "@/lib/validators";
 
@@ -196,6 +198,24 @@ export async function createOrderRequestAction(formData: FormData) {
           dashboardUrl: `${getAppUrl()}/provider/dashboard`,
         }),
       }).catch((err: Error) => console.warn("[email] Order request email failed:", err.message));
+    }
+
+    // Push notification — fires in parallel with the email so the
+    // provider's browser pings the moment the order lands. Wrapped so
+    // a push failure never breaks order creation.
+    try {
+      await sendPush({
+        userId: providerProfile.user_id,
+        ...pushEvents.providerNewOrder(
+          (listing as { title?: string }).title ?? "an order",
+          orderRef(order.id)
+        )
+      });
+    } catch (err) {
+      console.warn(
+        "[push] provider new-order failed:",
+        (err as Error).message
+      );
     }
   }
 

@@ -7,6 +7,8 @@ import {
   markPickedUpAction,
   updateDriverAvailabilityAction
 } from "@/app/driver/dashboard/actions";
+import { InstallPwaNudge } from "@/components/install-pwa-nudge";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { StatusPill } from "@/components/status-pill";
 import { requireRole } from "@/lib/auth";
 import type {
@@ -186,6 +188,8 @@ export default async function DriverDashboardPage({
               {params.error}
             </div>
           ) : null}
+          <PushNotificationPrompt role="driver" />
+          <InstallPwaNudge />
         </div>
       </section>
 
