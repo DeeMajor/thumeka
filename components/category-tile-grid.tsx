@@ -16,24 +16,22 @@ type CategoryTileGridProps = {
   categories: string[];
   /** Multi-select — zero or more active category names. */
   activeCategories: string[];
-  /** Mobile-only by default; pass true to render the desktop layout
-   *  too. Homepage mounts it twice (mobile band + a denser desktop
-   *  band) since the two layouts are quite different. */
+  /** Visual size of each tile in the rail. Mobile keeps it tight;
+   *  desktop bumps the icon + label a notch for legibility. The rail
+   *  itself is the same horizontal-scroll shape either way. */
   layout: "mobile" | "desktop";
   className?: string;
 };
 
 /**
- * Icon-tile grid for category discovery.
+ * Icon-tile scroll rail for category discovery.
  *
- *   - Mobile: 3 columns × N rows, big tiles, prominent placement above
- *     search results.
- *   - Desktop: 6 columns × N rows, denser, sits above the listings grid
- *     as a secondary discovery surface beside the existing sidebar.
- *
- * Tapping a tile toggles it in the URL's comma-separated `?category=`
- * list — buyers can pick more than one category at a time. Other URL
- * params (search keyword, sort, price band) are preserved.
+ * Single-row, horizontal-scroll strip — barely takes any vertical
+ * space so it can live above the filter strip permanently (no
+ * "Show categories" toggle needed). Tapping a tile toggles it in the
+ * URL's comma-separated `?category=` list — buyers can pick more than
+ * one category at a time. Other URL params (search keyword, sort,
+ * price band) are preserved.
  */
 export function CategoryTileGrid({
   categories,
@@ -70,17 +68,22 @@ export function CategoryTileGrid({
     });
   }
 
-  const gridCls =
-    layout === "mobile"
-      ? "grid grid-cols-3 gap-2 sm:hidden"
-      : "hidden grid-cols-6 gap-3 sm:grid";
+  const tileWidthCls =
+    layout === "mobile" ? "w-[76px]" : "w-[88px]";
+  const iconBoxCls =
+    layout === "mobile" ? "h-10 w-10" : "h-11 w-11";
+  const iconSizeCls =
+    layout === "mobile" ? "h-5 w-5" : "h-[22px] w-[22px]";
 
   return (
     <div
       aria-busy={isPending}
       aria-label="Categories"
-      className={`${gridCls} ${className ?? ""}`}
-      data-testid={`category-tile-grid-${layout}`}
+      // `[&::-webkit-scrollbar]:hidden` hides the scrollbar on
+      // WebKit/Blink; `[-ms-overflow-style:none] [scrollbar-width:none]`
+      // covers IE/Edge legacy and Firefox. No external utility needed.
+      className={`flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-pl-1 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${className ?? ""}`}
+      data-testid={`category-tile-rail-${layout}`}
     >
       {categories.map((category) => {
         const isActive = activeCategories.some(
@@ -92,7 +95,7 @@ export function CategoryTileGrid({
         return (
           <button
             aria-pressed={isActive}
-            className={`group flex flex-col items-center justify-center gap-1.5 rounded-2xl border bg-white p-3 text-center shadow-soft transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-1 ${
+            className={`group flex shrink-0 snap-start flex-col items-center justify-start gap-1.5 rounded-2xl border bg-white p-2 text-center shadow-soft transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-1 ${tileWidthCls} ${
               isActive
                 ? "border-leaf bg-mint"
                 : "border-black/10 hover:border-leaf/40"
@@ -103,14 +106,11 @@ export function CategoryTileGrid({
             type="button"
           >
             <span
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${tint.bg} ${tint.fg} transition group-hover:scale-105 sm:h-12 sm:w-12`}
+              className={`flex items-center justify-center rounded-full transition group-hover:scale-105 ${iconBoxCls} ${tint.bg} ${tint.fg}`}
             >
-              <Icon
-                aria-hidden="true"
-                className="h-5 w-5 sm:h-6 sm:w-6"
-              />
+              <Icon aria-hidden="true" className={iconSizeCls} />
             </span>
-            <span className="text-caption font-semibold leading-tight text-ink sm:text-xs">
+            <span className="line-clamp-2 text-caption font-semibold leading-tight text-ink">
               {category}
             </span>
           </button>

@@ -3,7 +3,7 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { Suspense } from "react";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
-import { CollapsibleCategoryBand } from "@/components/collapsible-category-band";
+import { CategoryTileGrid } from "@/components/category-tile-grid";
 import { EmptyState } from "@/components/empty-state";
 import { OnboardingOverlay } from "@/components/onboarding-overlay";
 import { FilterBottomSheet } from "@/components/filter-bottom-sheet";
@@ -213,14 +213,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           page now lands directly on the category band. */}
       <OnboardingOverlay />
 
-      {/* Mobile category tiles — collapsed by default so search results
-          sit directly under the navbar. Tap "Show categories" to reveal.
-          Hidden entirely while a keyword search is active so the grid can
-          take the full viewport. */}
+      {/* Mobile category rail — single-row horizontal scroll, always
+          visible (no toggle). Hidden while a keyword search is active
+          so the listings grid takes the full viewport. */}
       {!activeKeyword ? (
         <section className="page-shell sm:hidden pt-4">
           <Suspense fallback={null}>
-            <CollapsibleCategoryBand
+            <CategoryTileGrid
               activeCategories={activeCategories}
               categories={categoryNames}
               layout="mobile"
@@ -302,12 +301,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 as they type. */}
             {!activeKeyword ? (
               <>
-                {/* Desktop tile grid — collapsed by default. The sidebar
-                    still lists every category, so this is a power
-                    affordance. */}
+                {/* Desktop category rail — single-row horizontal
+                    scroll, always visible. The sidebar still lists every
+                    category in column form for power users. */}
                 <Suspense fallback={null}>
-                  <div className="mb-5">
-                    <CollapsibleCategoryBand
+                  <div className="mb-5 hidden sm:block">
+                    <CategoryTileGrid
                       activeCategories={activeCategories}
                       categories={categoryNames}
                       layout="desktop"
