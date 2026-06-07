@@ -117,9 +117,9 @@ export default async function CheckoutPage({
         </div>
 
         <CheckoutForm
-          defaultEmail={profile.email}
           defaultName={profile.full_name ?? ""}
           defaultPhone={profile.phone ?? ""}
+          defaultWhatsapp={profile.phone ?? ""}
           listingId={listing.id}
           listingPrice={listing.price}
           quantity={quantity}

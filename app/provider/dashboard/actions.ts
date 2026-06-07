@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { OrderAcceptedEftEmail } from "@/emails/order-accepted-eft";
+import { createWhatsAppUrl } from "@/lib/support";
+import { buildPaymentProofMessage } from "@/lib/whatsapp-message";
 import { requireRole } from "@/lib/auth";
 import type {
   OrderRow,
@@ -151,8 +153,17 @@ export async function acceptProviderOrderAction(formData: FormData) {
     note: "Provider accepted order"
   });
 
-  // Send EFT instructions to buyer
+  // Send EFT instructions to buyer. The email includes an "Open
+  // WhatsApp" CTA pre-filled with the order ref + total so the buyer
+  // can WhatsApp the support number directly after paying.
   if (existingOrder.buyer_email && providerProfile.bank_account_number) {
+    const whatsappPopUrl = createWhatsAppUrl(
+      buildPaymentProofMessage({
+        id: existingOrder.id,
+        buyer_name: existingOrder.buyer_name,
+        buyer_total: acceptedOrder.buyer_total ?? existingOrder.buyer_total ?? 0
+      })
+    );
     sendEmail({
       to: existingOrder.buyer_email,
       subject: "Your order has been accepted — EFT payment required — Thumeka",
@@ -168,6 +179,7 @@ export async function acceptProviderOrderAction(formData: FormData) {
         orderId: existingOrder.id,
         appUrl: getAppUrl(),
         ordersUrl: `${getAppUrl()}/buyer/orders`,
+        whatsappPopUrl,
       }),
     }).catch((err: Error) => console.warn("[email] Order accepted EFT email failed:", err.message));
   }

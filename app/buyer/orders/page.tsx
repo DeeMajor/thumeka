@@ -1,6 +1,8 @@
-import { ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { CartClearOnMount } from "@/components/cart-clear-on-mount";
 import { EmptyState } from "@/components/empty-state";
 import { InstallPwaNudge } from "@/components/install-pwa-nudge";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
@@ -15,6 +17,8 @@ import {
   type PaymentStatus
 } from "@/lib/order-rules";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createWhatsAppUrl } from "@/lib/support";
+import { buildPaymentProofMessage } from "@/lib/whatsapp-message";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +39,12 @@ type BuyerOrdersPageProps = {
   searchParams: Promise<{
     created?: string;
     status?: string;
+    clear_cart?: string;
   }>;
 };
+
+/** Payment statuses where the buyer needs to send a proof of payment. */
+const POP_STATUSES = new Set<string>(["awaiting_buyer_eft", "eft_submitted"]);
 
 export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageProps) {
   const params = await searchParams;
@@ -84,6 +92,11 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
 
   return (
     <div className="bg-mist" data-testid="page-buyer-orders">
+      {/* useSearchParams in the child needs a Suspense boundary at the
+          server-component layer. */}
+      <Suspense fallback={null}>
+        <CartClearOnMount />
+      </Suspense>
       <section className="section-band">
         <div className="page-shell gap-4 py-6">
           <div className="border-l-4 border-sky pl-4">
@@ -224,6 +237,64 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                     </p>
                   </div>
                 ) : null}
+
+                {/* WhatsApp proof-of-payment CTA — opens chat with the
+                    support number with a pre-filled message containing the
+                    order ref, total, and buyer name. */}
+                {POP_STATUSES.has(order.payment_status)
+                  ? (() => {
+                      const whatsappUrl = createWhatsAppUrl(
+                        buildPaymentProofMessage({
+                          id: order.id,
+                          buyer_name: order.buyer_name,
+                          buyer_total: order.buyer_total
+                        })
+                      );
+                      return (
+                        <div
+                          className="mt-4 rounded-lg border border-sky/30 bg-sky/5 p-3"
+                          data-testid="buyer-order-pop-panel"
+                        >
+                          <p className="text-body-sm font-semibold text-sky">
+                            Send your proof of payment
+                          </p>
+                          <p className="mt-1 text-caption text-sky/85">
+                            Once we receive it, your order is approved within
+                            minutes.
+                          </p>
+                          {whatsappUrl ? (
+                            <Link
+                              className="btn-primary mt-3 inline-flex items-center gap-2"
+                              data-testid="buyer-order-pop-whatsapp-link"
+                              href={whatsappUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <MessageCircle
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              Open WhatsApp
+                            </Link>
+                          ) : (
+                            <p
+                              className="mt-3 text-caption text-sky/70"
+                              data-testid="buyer-order-pop-fallback"
+                            >
+                              Email your proof to{" "}
+                              <a
+                                className="font-semibold underline"
+                                href="mailto:admin@thumeka.co.za"
+                              >
+                                admin@thumeka.co.za
+                              </a>
+                              .
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()
+                  : null}
               </div>
             ))}
           </div>

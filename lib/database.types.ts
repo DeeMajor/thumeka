@@ -114,6 +114,7 @@ export type OrderRow = {
   buyer_name: string;
   buyer_phone: string;
   buyer_email: string;
+  buyer_whatsapp: string | null;
   delivery_address: string | null;
   delivery_lat: string | null;
   delivery_lng: string | null;
@@ -146,6 +147,20 @@ export type OrderRow = {
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type OrderItemRow = {
+  id: string;
+  order_id: string;
+  listing_id: string;
+  listing_title: string;
+  /** Unit price snapshot at order time. */
+  listing_price: string;
+  quantity: number;
+  /** listing_price × quantity, snapshotted at order time. */
+  line_subtotal: string;
+  position: number;
+  created_at: string;
 };
 
 export type AdminSettingsRow = {
@@ -261,6 +276,7 @@ export type Database = {
       categories: Table<CategoryRow>;
       listings: Table<ListingRow>;
       orders: Table<OrderRow>;
+      order_items: Table<OrderItemRow>;
       order_status_events: Table<OrderStatusEventRow>;
       admin_settings: Table<AdminSettingsRow>;
       transactions: Table<TransactionRow>;
