@@ -70,22 +70,30 @@ const TINT_CLASSES: Record<Card["tint"], string> = {
 export function OnboardingOverlay() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [index, setIndex] = useState(0);
-  // Hidden by default — wait for the localStorage check to run on
-  // mount so SSR + first-paint match (server renders nothing).
-  const [mounted, setMounted] = useState(false);
 
+  // Open the dialog after first commit, gated on localStorage. The
+  // `<dialog>` element is always present in the DOM (closed by default),
+  // so the ref is attached by the time this effect runs — no `mounted`
+  // gate needed. Old iOS Safari (<15.4) doesn't expose `showModal`, so
+  // we feature-detect and no-op rather than throw.
   useEffect(() => {
-    setMounted(true);
-    if (typeof window === "undefined") return;
+    const dialog = dialogRef.current;
+    if (!dialog || typeof dialog.showModal !== "function") return;
     // Skip during a keyword search — let the buyer focus on results.
     const sp = new URLSearchParams(window.location.search);
     if (sp.get("q")?.trim()) return;
     try {
       if (window.localStorage.getItem(STORAGE_KEY) === "1") return;
     } catch {
-      // localStorage unavailable (private mode etc.) — open anyway.
+      // localStorage unavailable (e.g. iOS Safari private mode on very
+      // old iOS) — open anyway. Worst case the user dismisses again.
     }
-    dialogRef.current?.showModal();
+    try {
+      dialog.showModal();
+    } catch {
+      // showModal can throw if the dialog is already open (e.g. a
+      // hot-reload double-fired the effect). Swallow — nothing to do.
+    }
   }, []);
 
   // Body scroll lock + arrow-key navigation. Native <dialog> handles
@@ -146,8 +154,6 @@ export function OnboardingOverlay() {
       close();
     }
   }
-
-  if (!mounted) return null;
 
   const card = CARDS[index];
   const Icon = card.icon;
