@@ -28,7 +28,8 @@ export const ORDER_STATUSES = [
   "service_in_progress",
   "completed",
   "cancelled",
-  "issue_reported"
+  "issue_reported",
+  "expired"
 ] as const;
 
 export const DURBAN_SUBURBS = [

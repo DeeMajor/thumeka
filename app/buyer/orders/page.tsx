@@ -1,10 +1,13 @@
-import { ArrowRight, CheckCircle2, Clock, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, MessageCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+
+import { markEftSubmittedAction } from "@/app/buyer/orders/actions";
 
 import { CartClearOnMount } from "@/components/cart-clear-on-mount";
 import { EmptyState } from "@/components/empty-state";
 import { InstallPwaNudge } from "@/components/install-pwa-nudge";
+import { OrderCountdown } from "@/components/order-countdown";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { Segmented, type SegmentedTab } from "@/components/segmented";
 import { StatusPill } from "@/components/status-pill";
@@ -38,6 +41,8 @@ function bucketOf(status: string): Filter {
 type BuyerOrdersPageProps = {
   searchParams: Promise<{
     created?: string;
+    error?: string;
+    pop_marked?: string;
     status?: string;
     clear_cart?: string;
   }>;
@@ -128,6 +133,23 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
               Order request created. The provider must accept before payment instructions are shown.
             </div>
           ) : null}
+          {params.pop_marked ? (
+            <div
+              className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf"
+              data-testid="buyer-pop-marked-message"
+            >
+              Proof of payment marked as sent. Admin will confirm and unlock
+              your order shortly.
+            </div>
+          ) : null}
+          {params.error ? (
+            <div
+              className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+              data-testid="buyer-orders-error-message"
+            >
+              {params.error}
+            </div>
+          ) : null}
           <PushNotificationPrompt role="buyer" />
           <InstallPwaNudge />
         </div>
@@ -189,9 +211,30 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                 data-testid="buyer-order-card"
                 key={order.id}
               >
-                {/* Top row: status + date */}
+                {/* Top row: status + countdown + date */}
                 <div className="flex items-start justify-between gap-3">
-                  <StatusPill status={order.status} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusPill status={order.status} />
+                    {order.expires_at &&
+                    order.status === "order_requested" ? (
+                      <OrderCountdown
+                        data-testid="buyer-order-acceptance-countdown"
+                        deadline={order.expires_at}
+                        label="Seller has"
+                        size="sm"
+                        startedAt={order.created_at}
+                      />
+                    ) : null}
+                    {order.eft_confirm_due_at &&
+                    order.payment_status === "eft_submitted" ? (
+                      <OrderCountdown
+                        data-testid="buyer-order-eft-confirm-countdown"
+                        deadline={order.eft_confirm_due_at}
+                        label="Admin confirms in"
+                        size="sm"
+                      />
+                    ) : null}
+                  </div>
                   <time className="mt-0.5 shrink-0 text-caption text-black/40">
                     {new Date(order.created_at).toLocaleDateString("en-ZA", {
                       day: "numeric",
@@ -262,39 +305,95 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                             Once we receive it, your order is approved within
                             minutes.
                           </p>
-                          {whatsappUrl ? (
-                            <Link
-                              className="btn-primary mt-3 inline-flex items-center gap-2"
-                              data-testid="buyer-order-pop-whatsapp-link"
-                              href={whatsappUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <MessageCircle
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                              />
-                              Open WhatsApp
-                            </Link>
-                          ) : (
-                            <p
-                              className="mt-3 text-caption text-sky/70"
-                              data-testid="buyer-order-pop-fallback"
-                            >
-                              Email your proof to{" "}
-                              <a
-                                className="font-semibold underline"
-                                href="mailto:admin@thumeka.co.za"
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            {whatsappUrl ? (
+                              <Link
+                                className="btn-primary inline-flex items-center gap-2"
+                                data-testid="buyer-order-pop-whatsapp-link"
+                                href={whatsappUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
                               >
-                                admin@thumeka.co.za
-                              </a>
-                              .
-                            </p>
-                          )}
+                                <MessageCircle
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                Open WhatsApp
+                              </Link>
+                            ) : (
+                              <p
+                                className="text-caption text-sky/70"
+                                data-testid="buyer-order-pop-fallback"
+                              >
+                                Email your proof to{" "}
+                                <a
+                                  className="font-semibold underline"
+                                  href="mailto:admin@thumeka.co.za"
+                                >
+                                  admin@thumeka.co.za
+                                </a>
+                                .
+                              </p>
+                            )}
+                            {/* The "I sent it" form is what flips the order
+                                to eft_submitted and starts the admin's
+                                countdown. Only shown for awaiting_buyer_eft
+                                — once submitted, the panel updates next
+                                refresh. */}
+                            {order.payment_status === "awaiting_buyer_eft" ? (
+                              <form action={markEftSubmittedAction}>
+                                <input
+                                  name="order_id"
+                                  type="hidden"
+                                  value={order.id}
+                                />
+                                <button
+                                  className="btn-secondary"
+                                  data-testid="buyer-order-mark-pop-sent-button"
+                                  type="submit"
+                                >
+                                  I sent the proof
+                                </button>
+                              </form>
+                            ) : (
+                              <span
+                                className="text-caption text-sky/70"
+                                data-testid="buyer-order-pop-submitted-note"
+                              >
+                                Marked as sent — waiting for admin.
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })()
                   : null}
+
+                {/* Expired panel — for orders the cron flipped to
+                    `expired` because the provider didn't respond in
+                    time. */}
+                {order.status === "expired" ? (
+                  <div
+                    className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3"
+                    data-testid="buyer-order-expired-panel"
+                  >
+                    <p className="flex items-center gap-2 text-body-sm font-semibold text-red-700">
+                      <XCircle aria-hidden="true" className="h-4 w-4" />
+                      Seller didn&apos;t respond in time
+                    </p>
+                    <p className="mt-1 text-caption text-red-700/85">
+                      This order expired. Browse alternatives — other open
+                      sellers should respond faster.
+                    </p>
+                    <Link
+                      className="btn-primary mt-3 inline-flex items-center gap-2"
+                      data-testid="buyer-order-expired-browse-link"
+                      href="/listings"
+                    >
+                      Browse listings
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

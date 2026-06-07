@@ -15,6 +15,7 @@ import type { ListingType } from "@/lib/constants";
 import { sendEmail } from "@/lib/email";
 import { sendPush } from "@/lib/push";
 import { pushEvents } from "@/lib/push-events";
+import { computeResponseRatePct } from "@/lib/sla";
 import { getAppUrl } from "@/lib/env";
 import { toLatLng } from "@/lib/geo";
 import { isValidListingImageStoragePath } from "@/lib/listing-images";
@@ -194,8 +195,60 @@ export async function acceptProviderOrderAction(formData: FormData) {
     console.warn("[push] buyer order-accepted failed:", (err as Error).message);
   }
 
+  // Accountability: reset the consecutive-miss counter (this accept
+  // proves the provider is responsive again) and recompute the rolling
+  // 30-day response rate. Both cascade onto listings so the public
+  // marketplace badge stays accurate without an extra refresh.
+  //
+  // Rate semantics: of all orders the provider had a chance to act on
+  // in the last 30 days (= expired + anything past acceptance), what
+  // fraction did they accept in time? Pre-acceptance states
+  // (order_requested) are still in-flight and don't count yet.
+  try {
+    const { data: recentOrders } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("provider_id", providerProfile.id)
+      .gte(
+        "created_at",
+        new Date(Date.now() - 30 * 24 * 3600_000).toISOString()
+      );
+    const recent = (recentOrders ?? []) as Array<{ status: string }>;
+    const inFlight = new Set([
+      "order_requested",
+      "awaiting_provider_acceptance"
+    ]);
+    const total = recent.filter((o) => !inFlight.has(o.status)).length;
+    const accepted = recent.filter(
+      (o) => !inFlight.has(o.status) && o.status !== "expired"
+    ).length;
+    const rate = computeResponseRatePct({ accepted, total });
+
+    await supabase
+      .from("provider_profiles")
+      .update({
+        consecutive_missed_orders: 0,
+        response_rate_pct: rate
+      })
+      .eq("id", providerProfile.id);
+
+    await supabase
+      .from("listings")
+      .update({
+        provider_response_rate_pct: rate,
+        updated_at: new Date().toISOString()
+      })
+      .eq("provider_id", providerProfile.id);
+  } catch (err) {
+    console.warn(
+      "[provider-accept] response-rate update failed:",
+      (err as Error).message
+    );
+  }
+
   revalidatePath("/provider/dashboard");
   revalidatePath("/buyer/orders");
+  revalidatePath("/");
   redirect(`/provider/dashboard?accepted=${existingOrder.id}`);
 }
 
@@ -252,6 +305,67 @@ export async function updateProviderBusinessNameAction(formData: FormData) {
   revalidatePath("/listings");
   revalidatePath("/");
   redirect("/provider/dashboard?tab=listings&business_name_updated=1");
+}
+
+/**
+ * Toggle the provider's store open/closed.
+ *
+ * - Closing: sets `is_open=false`, stamps `closed_at`, and cascade-
+ *   syncs `listings.provider_is_open` so the marketplace immediately
+ *   reflects the change.
+ * - Opening: sets `is_open=true`, clears `closed_at`, and resets
+ *   `consecutive_missed_orders=0` (this is the "fresh start" affordance
+ *   for providers who were auto-closed by the SLA cron).
+ *
+ * Mirrors `updateProviderBusinessNameAction`'s cascade pattern.
+ */
+export async function updateProviderOpenStatusAction(formData: FormData) {
+  const { supabase, providerProfile } = await getApprovedProviderProfile();
+  const raw = readString(formData, "is_open");
+  const nextIsOpen = raw === "true";
+
+  if (nextIsOpen === providerProfile.is_open) {
+    redirect("/provider/dashboard");
+  }
+
+  const profileUpdate: Record<string, unknown> = {
+    is_open: nextIsOpen,
+    closed_at: nextIsOpen ? null : new Date().toISOString()
+  };
+  if (nextIsOpen) {
+    // Re-opening — give the provider a fresh accountability counter.
+    profileUpdate.consecutive_missed_orders = 0;
+  }
+
+  const { error: profileError } = await supabase
+    .from("provider_profiles")
+    .update(profileUpdate)
+    .eq("id", providerProfile.id);
+  if (profileError) {
+    redirectWithError("Unable to update your store status");
+  }
+
+  const { error: listingsError } = await supabase
+    .from("listings")
+    .update({
+      provider_is_open: nextIsOpen,
+      updated_at: new Date().toISOString()
+    })
+    .eq("provider_id", providerProfile.id);
+  if (listingsError) {
+    redirectWithError(
+      "Status saved, but some listings may still show the old badge. Refresh in a moment or contact support."
+    );
+  }
+
+  revalidatePath("/provider/dashboard");
+  revalidatePath("/listings");
+  revalidatePath("/");
+  redirect(
+    nextIsOpen
+      ? "/provider/dashboard?store_opened=1"
+      : "/provider/dashboard?store_closed=1"
+  );
 }
 
 export async function createProviderListingAction(formData: FormData) {
