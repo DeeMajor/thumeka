@@ -26,12 +26,24 @@ const COPY: Record<Role, { title: string; body: string }> = {
 
 type Status =
   | "checking"        // initial mount: detecting support + permission state
-  | "unsupported"     // browser doesn't have Push API or Notification API
+  | "unsupported"     // browser doesn't have Push API, Notification API,
+                       //   or the deployment hasn't set VAPID keys yet
+  | "needs_pwa_install" // iOS Safari, not in standalone PWA mode
   | "blocked"         // user denied permission previously
   | "enabled"         // permission granted + subscription registered
   | "available"       // can prompt; user hasn't decided yet
   | "working"         // mid-subscribe flow
   | "error";          // unexpected failure
+
+/** iOS Safari exposes `navigator.standalone` (a non-standard flag).
+ *  When it's `false` we're in mobile Safari proper; when `true` the
+ *  page is launched from the Home Screen (PWA standalone). Other
+ *  browsers leave the property `undefined`. */
+function isIosSafariNonStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  const standalone = (window.navigator as { standalone?: boolean }).standalone;
+  return standalone === false;
+}
 
 /**
  * Contextual "Enable browser notifications" panel. Each dashboard mounts
@@ -58,12 +70,28 @@ export function PushNotificationPrompt({ role }: PushNotificationPromptProps) {
 
     async function detect() {
       if (typeof window === "undefined") return;
+
+      // No-op the panel entirely when the deployment hasn't shipped
+      // VAPID keys — the subscribe call would 100% fail, so don't
+      // present a button that doesn't work. (NEXT_PUBLIC_* is inlined
+      // at build time, so this check is reliable client-side.)
+      if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+        if (!cancelled) setStatus("unsupported");
+        return;
+      }
+
       if (
         !("serviceWorker" in navigator) ||
         !("PushManager" in window) ||
         !("Notification" in window)
       ) {
-        if (!cancelled) setStatus("unsupported");
+        // iOS Safari (non-standalone) gets a friendlier nudge — Push
+        // works after Add to Home Screen, not before.
+        if (!cancelled) {
+          setStatus(
+            isIosSafariNonStandalone() ? "needs_pwa_install" : "unsupported"
+          );
+        }
         return;
       }
 
@@ -99,10 +127,11 @@ export function PushNotificationPrompt({ role }: PushNotificationPromptProps) {
     setStatus("working");
     setErrorMessage(null);
 
+    // `detect()` already gates on this env var being present — defensive
+    // re-check keeps TS happy and protects against a stale render.
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
-      setStatus("error");
-      setErrorMessage("Notifications aren't configured yet on this site.");
+      setStatus("unsupported");
       return;
     }
 
@@ -150,10 +179,40 @@ export function PushNotificationPrompt({ role }: PushNotificationPromptProps) {
     }
   }
 
-  // Don't render anything in two cases: still detecting, or the user
-  // has nothing to do (enabled / blocked beyond our reach).
+  // Don't render anything when there's nothing for the user to do:
+  // still detecting, already enabled, or the browser / deployment
+  // can't support push at all.
   if (status === "checking" || status === "enabled") return null;
   if (status === "unsupported") return null;
+
+  // iOS Safari (non-standalone): show a small Add to Home Screen tip
+  // instead of the regular Enable button — push won't work in mobile
+  // Safari, but it will after the user installs the PWA.
+  if (status === "needs_pwa_install") {
+    return (
+      <div
+        className="rounded-lg border border-sky/30 bg-sky/5 p-3"
+        data-status="needs_pwa_install"
+        data-testid="push-notification-prompt"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky/15 text-sky">
+            <Bell aria-hidden="true" className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-body-sm font-semibold text-sky">
+              Turn on notifications on iPhone
+            </p>
+            <p className="mt-1 text-caption text-sky/80">
+              Tap the share icon in Safari, then <strong>Add to Home Screen</strong>.
+              Open Thumeka from your Home Screen and you&apos;ll be able to enable
+              notifications from here.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { title, body } = COPY[role];
 

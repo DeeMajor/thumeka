@@ -30,6 +30,32 @@ export type PaymentStatus =
   | "failed"
   | "refunded_manual";
 
+/**
+ * Human-friendly payment-status copy for the buyer surfaces.
+ *
+ * The raw `payment_status` reads like a system event (`not_requested`,
+ * `eft_submitted`) — fine for admin / provider screens, but unfriendly
+ * for buyers. This helper maps each enum value to a sentence framed
+ * from the buyer's POV ("Waiting for seller to accept", "We're verifying
+ * your payment"). Used by the buyer orders list + detail page.
+ */
+export function paymentStatusLabelForBuyer(status: PaymentStatus): string {
+  switch (status) {
+    case "not_requested":
+      return "Waiting for seller to accept";
+    case "awaiting_buyer_eft":
+      return "Ready to pay — see EFT details";
+    case "eft_submitted":
+      return "We're verifying your payment";
+    case "confirmed":
+      return "Payment confirmed";
+    case "failed":
+      return "Payment didn't go through";
+    case "refunded_manual":
+      return "Refund issued";
+  }
+}
+
 export type OrderForRules = {
   id: string;
   buyer_id: string;

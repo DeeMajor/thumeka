@@ -96,7 +96,7 @@ export function AccountDropdown({
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-lg border border-black/10 bg-white shadow-soft"
+          className="absolute right-0 z-50 mt-2 w-64 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-black/10 bg-white shadow-soft"
           data-testid="account-dropdown-panel"
           id="account-dropdown-panel"
           onClick={() => setOpen(false)}

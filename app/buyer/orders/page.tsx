@@ -17,7 +17,8 @@ import { formatMoney, getGreeting } from "@/lib/format";
 import {
   canBuyerSeeEftInstructions,
   type OrderRuleStatus,
-  type PaymentStatus
+  type PaymentStatus,
+  paymentStatusLabelForBuyer
 } from "@/lib/order-rules";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createWhatsAppUrl } from "@/lib/support";
@@ -125,12 +126,14 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
               </h1>
             )}
             <p className="mt-2 text-body-sm text-black/55">
-              Track requests and complete payment once the seller accepts.
+              Your orders, in one place. We&apos;ll let you know the moment a
+              seller accepts.
             </p>
           </div>
           {params.created ? (
             <div className="rounded-md border border-mint bg-mint p-3 text-sm text-leaf">
-              Order request created. The provider must accept before payment instructions are shown.
+              Order placed. We&apos;ll show payment details as soon as the
+              seller accepts.
             </div>
           ) : null}
           {params.pop_marked ? (
@@ -207,59 +210,76 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
           <div className="space-y-3">
             {visibleOrders.map((order) => (
               <div
-                className="rounded-xl border border-black/8 bg-white p-4 shadow-soft"
+                className="rounded-xl border border-black/8 bg-white p-4 shadow-soft transition hover:border-leaf/40 hover:shadow-md"
                 data-testid="buyer-order-card"
                 key={order.id}
               >
-                {/* Top row: status + countdown + date */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusPill status={order.status} />
-                    {order.expires_at &&
-                    order.status === "order_requested" ? (
-                      <OrderCountdown
-                        data-testid="buyer-order-acceptance-countdown"
-                        deadline={order.expires_at}
-                        label="Seller has"
-                        size="sm"
-                        startedAt={order.created_at}
-                      />
-                    ) : null}
-                    {order.eft_confirm_due_at &&
-                    order.payment_status === "eft_submitted" ? (
-                      <OrderCountdown
-                        data-testid="buyer-order-eft-confirm-countdown"
-                        deadline={order.eft_confirm_due_at}
-                        label="Admin confirms in"
-                        size="sm"
-                      />
-                    ) : null}
+                {/* Tappable header — wrapped in a Link so the whole card
+                    summary navigates to the detail page. The EFT / POP /
+                    Expired panels below stay outside the Link to keep their
+                    own forms + anchors valid. */}
+                <Link
+                  className="-m-4 mb-0 block rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-2"
+                  data-testid="buyer-order-card-link"
+                  href={`/buyer/orders/${order.id}`}
+                >
+                  {/* Top row: status + countdown + date */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill status={order.status} />
+                      {order.expires_at &&
+                      order.status === "order_requested" ? (
+                        <OrderCountdown
+                          data-testid="buyer-order-acceptance-countdown"
+                          deadline={order.expires_at}
+                          label="Seller has"
+                          size="sm"
+                          startedAt={order.created_at}
+                        />
+                      ) : null}
+                      {order.eft_confirm_due_at &&
+                      order.payment_status === "eft_submitted" ? (
+                        <OrderCountdown
+                          data-testid="buyer-order-eft-confirm-countdown"
+                          deadline={order.eft_confirm_due_at}
+                          label="Admin confirms in"
+                          size="sm"
+                        />
+                      ) : null}
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1.5 text-caption text-black/40">
+                      <time>
+                        {new Date(order.created_at).toLocaleDateString("en-ZA", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })}
+                      </time>
+                      <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                  <time className="mt-0.5 shrink-0 text-caption text-black/40">
-                    {new Date(order.created_at).toLocaleDateString("en-ZA", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric"
-                    })}
-                  </time>
-                </div>
 
-                {/* Amount */}
-                <p className="mt-3 text-xl font-bold text-ink">
-                  {formatMoney(order.buyer_total)}
-                </p>
+                  {/* Amount */}
+                  <p className="mt-3 text-xl font-bold text-ink">
+                    {formatMoney(order.buyer_total)}
+                  </p>
 
-                {/* Details */}
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-black/55">
-                  <span>{order.suburb ?? "—"}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>Payment: {order.payment_status.replaceAll("_", " ")}</span>
-                </div>
+                  {/* Details */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-black/55">
+                    <span>{order.suburb ?? "—"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span data-testid="buyer-order-payment-status">
+                      {paymentStatusLabelForBuyer(
+                        order.payment_status as PaymentStatus
+                      )}
+                    </span>
+                  </div>
 
-                {/* Reference */}
-                <p className="mt-2 font-mono text-caption text-black/30">
-                  #{order.id.slice(0, 8)}
-                </p>
+                  {/* Reference */}
+                  <p className="mt-2 font-mono text-caption text-black/30">
+                    #{order.id.slice(0, 8)}
+                  </p>
+                </Link>
 
                 {/* EFT instructions */}
                 {canBuyerSeeEftInstructions(
@@ -360,7 +380,8 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
                                 className="text-caption text-sky/70"
                                 data-testid="buyer-order-pop-submitted-note"
                               >
-                                Marked as sent — waiting for admin.
+                                We&apos;re verifying your payment — you&apos;ll
+                                get a notification when it&apos;s confirmed.
                               </span>
                             )}
                           </div>
@@ -401,7 +422,7 @@ export default async function BuyerOrdersPage({ searchParams }: BuyerOrdersPageP
           <EmptyState
             body={
               filter === "all"
-                ? "Browse listings and submit your first order request. Payment stays locked until the provider accepts."
+                ? "You haven't ordered anything yet. Browse the marketplace — your money stays safe until the seller accepts."
                 : filter === "active"
                   ? "No active orders. Browse listings to start one."
                   : "Nothing here yet — completed and cancelled orders will land here."
