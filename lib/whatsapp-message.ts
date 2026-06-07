@@ -25,10 +25,10 @@ export function buildPaymentProofMessage(order: OrderForWhatsApp): string {
 }
 
 /**
- * Pre-filled message for the footer "Report a bug" deep-link. We're in
- * beta, so the WhatsApp number is the fastest path for support to triage
- * something that broke. The labelled placeholders cue the user on what
- * to fill in — they can type over each one before sending.
+ * Pre-filled message for the footer "Report a bug" deep-link. WhatsApp
+ * is the fastest path for support to triage something that broke. The
+ * labelled placeholders cue the user on what to fill in — they can
+ * type over each one before sending.
  */
 export function buildBugReportMessage(): string {
   return [

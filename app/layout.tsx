@@ -137,13 +137,6 @@ export default async function RootLayout({
                   src="/thumeka.png"
                 />
               </span>
-              {/* "BETA" pill — drives off env so we can flip GA later. */}
-              <span
-                className="rounded-full bg-sunset/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sunset"
-                data-testid="nav-beta-pill"
-              >
-                Beta
-              </span>
             </Link>
 
             {/* Desktop search sits inline between logo and account cluster.

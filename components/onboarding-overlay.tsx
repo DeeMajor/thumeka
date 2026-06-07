@@ -39,7 +39,7 @@ const CARDS: Card[] = [
     icon: Sparkles,
     tint: "iris",
     title: "Start browsing",
-    body: "Tap any category to begin. We'll keep you posted as your order moves. Heads up: Thumeka is in beta — if something breaks, the Report a bug link in the footer goes straight to our WhatsApp."
+    body: "Tap any category to begin. We'll keep you posted as your order moves — and if something breaks, the Report a bug link in the footer goes straight to our WhatsApp."
   }
 ];
 
