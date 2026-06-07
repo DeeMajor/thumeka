@@ -15,11 +15,11 @@ import type { CategoryRow, ListingRow } from "@/lib/database.types";
 import { formatMoney, titleCase } from "@/lib/format";
 import {
   type MarketplaceSort,
+  parseCategoryList,
   sanitisePrice,
   sanitiseSort,
   sanitiseSuburb
 } from "@/lib/marketplace-filters";
-import { roleHomePath } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +58,8 @@ function sanitiseSearchKeyword(raw: string | undefined): string {
 }
 
 type MarketplaceFilters = {
-  categoryName: string | undefined;
+  /** Zero or more category names — buyers can multi-select category tiles. */
+  categoryNames: string[];
   searchKeyword: string | undefined;
   sort: MarketplaceSort;
   minPrice: number | null;
@@ -69,7 +70,7 @@ type MarketplaceFilters = {
 
 async function getMarketplaceData(filters: MarketplaceFilters) {
   const {
-    categoryName,
+    categoryNames,
     searchKeyword,
     sort,
     minPrice,
@@ -87,12 +88,14 @@ async function getMarketplaceData(filters: MarketplaceFilters) {
       .order("sort_order", { ascending: true });
 
     const categoryList = (categories ?? []) as CategoryRow[];
-    const matchedCategory = categoryName
-      ? categoryList.find(
-          (category) =>
-            category.name.toLowerCase() === categoryName.toLowerCase()
-        )
-      : undefined;
+    // Resolve each picked category name to a row. Unknown names drop
+    // silently — same defensive behaviour as the single-select used.
+    const nameLookup = new Map(
+      categoryList.map((category) => [category.name.toLowerCase(), category])
+    );
+    const matchedCategories = categoryNames
+      .map((name) => nameLookup.get(name.toLowerCase()))
+      .filter((category): category is CategoryRow => Boolean(category));
 
     let listingsQuery = supabase
       .from("listings")
@@ -101,12 +104,15 @@ async function getMarketplaceData(filters: MarketplaceFilters) {
       .eq("admin_disabled", false);
 
     // Default sort: open stores first, newest within each open/closed band.
-    // Price-asc / price-desc overrides the open-first rank — buyers
-    // looking for cheapest are willing to filter by Open-now explicitly.
+    // Price-asc / price-desc / oldest each override the open-first rank —
+    // a buyer explicitly picking those orders is asking for that specific
+    // axis, not "open now."
     if (sort === "price_asc") {
       listingsQuery = listingsQuery.order("price", { ascending: true });
     } else if (sort === "price_desc") {
       listingsQuery = listingsQuery.order("price", { ascending: false });
+    } else if (sort === "oldest") {
+      listingsQuery = listingsQuery.order("created_at", { ascending: true });
     } else {
       listingsQuery = listingsQuery
         .order("provider_is_open", { ascending: false })
@@ -114,8 +120,16 @@ async function getMarketplaceData(filters: MarketplaceFilters) {
     }
     listingsQuery = listingsQuery.limit(60);
 
-    if (matchedCategory) {
-      listingsQuery = listingsQuery.eq("category_id", matchedCategory.id);
+    if (matchedCategories.length === 1) {
+      listingsQuery = listingsQuery.eq(
+        "category_id",
+        matchedCategories[0].id
+      );
+    } else if (matchedCategories.length > 1) {
+      listingsQuery = listingsQuery.in(
+        "category_id",
+        matchedCategories.map((category) => category.id)
+      );
     }
     if (minPrice !== null) {
       listingsQuery = listingsQuery.gte("price", minPrice);
@@ -146,14 +160,14 @@ async function getMarketplaceData(filters: MarketplaceFilters) {
     return {
       listings: (listings ?? []) as ListingRow[],
       categories: categoryList,
-      matchedCategory,
+      matchedCategories,
       configured: true
     };
   } catch {
     return {
       listings: [] as ListingRow[],
       categories: [] as CategoryRow[],
-      matchedCategory: undefined,
+      matchedCategories: [] as CategoryRow[],
       configured: false
     };
   }
@@ -161,7 +175,7 @@ async function getMarketplaceData(filters: MarketplaceFilters) {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
-  const activeCategory = params.category;
+  const activeCategories = parseCategoryList(params.category);
   const activeKeyword = params.q?.trim() || undefined;
   const sort = sanitiseSort(params.sort);
   const minPrice = sanitisePrice(params.min_price);
@@ -169,10 +183,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const suburb = sanitiseSuburb(params.suburb);
   const openOnly = params.open_only === "1";
 
-  const [{ listings, categories, matchedCategory, configured }, profile] =
+  const [{ listings, categories, matchedCategories, configured }, profile] =
     await Promise.all([
       getMarketplaceData({
-        categoryName: activeCategory,
+        categoryNames: activeCategories,
         searchKeyword: activeKeyword,
         sort,
         minPrice,
@@ -197,83 +211,26 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           category band so search results sit right under the navbar. */}
 
       {/* Mobile category tiles — collapsed by default so search results
-          sit directly under the navbar. Tap "Show categories" to reveal. */}
-      <section className="page-shell sm:hidden pt-4">
-        <Suspense fallback={null}>
-          <CollapsibleCategoryBand
-            activeCategory={activeCategory}
-            categories={categoryNames}
-            layout="mobile"
-          />
-        </Suspense>
-      </section>
+          sit directly under the navbar. Tap "Show categories" to reveal.
+          Hidden entirely while a keyword search is active so the grid can
+          take the full viewport. */}
+      {!activeKeyword ? (
+        <section className="page-shell sm:hidden pt-4">
+          <Suspense fallback={null}>
+            <CollapsibleCategoryBand
+              activeCategories={activeCategories}
+              categories={categoryNames}
+              layout="mobile"
+            />
+          </Suspense>
+        </section>
+      ) : null}
 
-      {/* Browse band: sidebar + grid */}
-      <section className="page-shell py-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2
-              className="text-h1 text-ink"
-              data-testid="home-browse-heading"
-            >
-              {activeKeyword ? "Search results" : "Browse approved listings"}
-            </h2>
-            {activeKeyword || matchedCategory ? (
-              <p
-                className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-black/55"
-                data-testid="home-active-filters"
-              >
-                {activeKeyword ? (
-                  <span data-testid="home-active-keyword">
-                    {listings.length} {listings.length === 1 ? "match" : "matches"} for{" "}
-                    <span className="font-semibold text-ink">
-                      &ldquo;{activeKeyword}&rdquo;
-                    </span>
-                  </span>
-                ) : null}
-                {activeKeyword && matchedCategory ? (
-                  <span aria-hidden="true">·</span>
-                ) : null}
-                {matchedCategory ? (
-                  <span>
-                    in <span className="font-semibold text-ink">{matchedCategory.name}</span>
-                  </span>
-                ) : null}
-                {activeKeyword ? (
-                  <Link
-                    className="font-semibold text-leaf hover:underline"
-                    data-testid="home-clear-search-link"
-                    href={
-                      matchedCategory
-                        ? `/?category=${encodeURIComponent(matchedCategory.name)}`
-                        : "/"
-                    }
-                  >
-                    Clear search
-                  </Link>
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-          {profile ? (
-            <Link
-              className="btn-primary"
-              data-testid="home-dashboard-link"
-              href={roleHomePath(profile.role)}
-            >
-              My dashboard
-            </Link>
-          ) : (
-            <Link
-              className="btn-primary"
-              data-testid="home-create-account-link"
-              href="/auth/register"
-            >
-              Create account
-            </Link>
-          )}
-        </div>
-
+      {/* Browse band: sidebar + grid. The result count strip under the
+          filter row carries the contextual info ("60 listings · Food ·
+          in Berea") so the band no longer needs a top heading or a
+          dashboard CTA — both moved out at the user's request. */}
+      <section className="page-shell pb-8 pt-4">
         {!configured ? (
           <div className="mt-4 rounded-md border border-maize/60 bg-maize/20 p-3 text-sm text-ink">
             Live listings are temporarily unavailable. Please check back
@@ -282,10 +239,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         ) : null}
 
         <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:flex-row sm:items-start">
-          {/* Desktop sidebar */}
+          {/* Desktop sidebar — hidden while searching so the grid widens. */}
           <aside
             aria-label="Categories"
-            className="hidden w-56 shrink-0 sm:block"
+            className={
+              activeKeyword
+                ? "hidden"
+                : "hidden w-56 shrink-0 sm:block"
+            }
             data-testid="home-category-sidebar"
           >
             <div className="sticky top-24 rounded-lg border border-black/10 bg-white p-3">
@@ -296,7 +257,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <li>
                   <Link
                     className={
-                      activeCategory
+                      activeCategories.length
                         ? "block rounded-md px-2 py-2 text-ink hover:bg-mist"
                         : "block rounded-md bg-mint px-2 py-2 font-semibold text-leaf"
                     }
@@ -307,8 +268,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </Link>
                 </li>
                 {categoryNames.map((category) => {
-                  const isActive =
-                    activeCategory?.toLowerCase() === category.toLowerCase();
+                  const isActive = activeCategories.some(
+                    (name) => name.toLowerCase() === category.toLowerCase()
+                  );
                   return (
                     <li key={category}>
                       <Link
@@ -331,35 +293,45 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
           {/* Right pane: filters + grid */}
           <div className="min-w-0 flex-1">
-            {/* Desktop tile grid — collapsed by default. The sidebar still
-                lists every category, so this is a power affordance. */}
-            <Suspense fallback={null}>
-              <div className="mb-5">
-                <CollapsibleCategoryBand
-                  activeCategory={activeCategory}
-                  categories={categoryNames}
-                  layout="desktop"
-                />
-              </div>
-            </Suspense>
+            {/* Category band + filter controls + active chips all drop
+                out while a keyword search is active. The page narrows to
+                "search bar → results" so the buyer sees the grid filter
+                as they type. */}
+            {!activeKeyword ? (
+              <>
+                {/* Desktop tile grid — collapsed by default. The sidebar
+                    still lists every category, so this is a power
+                    affordance. */}
+                <Suspense fallback={null}>
+                  <div className="mb-5">
+                    <CollapsibleCategoryBand
+                      activeCategories={activeCategories}
+                      categories={categoryNames}
+                      layout="desktop"
+                    />
+                  </div>
+                </Suspense>
 
-            {/* Desktop sticky filter strip + mobile filter trigger. The
-                mobile strip stays inline as a single button; the bottom
-                sheet handles the actual controls. */}
-            <div className="mb-4 flex items-center gap-3">
-              <Suspense fallback={null}>
-                <MarketplaceFilterStrip />
-              </Suspense>
-              <Suspense fallback={null}>
-                <FilterBottomSheet />
-              </Suspense>
-            </div>
+                {/* Desktop sticky filter strip + mobile filter trigger.
+                    The mobile strip stays inline as a single button; the
+                    bottom sheet handles the actual controls. */}
+                <div className="mb-4 flex items-center gap-3">
+                  <Suspense fallback={null}>
+                    <MarketplaceFilterStrip />
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <FilterBottomSheet />
+                  </Suspense>
+                </div>
 
-            {/* Active filter chips strip — only renders when at least
-                one filter is applied (chips read URL directly). */}
-            <Suspense fallback={null}>
-              <MarketplaceActiveFilters className="mb-4" />
-            </Suspense>
+                {/* Active filter chips strip — only renders when at
+                    least one filter is applied (chips read URL
+                    directly). */}
+                <Suspense fallback={null}>
+                  <MarketplaceActiveFilters className="mb-4" />
+                </Suspense>
+              </>
+            ) : null}
 
             {/* Result count line — shows the current scope so the buyer
                 knows what they're looking at. */}
@@ -368,8 +340,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               data-testid="home-result-count"
             >
               <span className="font-semibold text-ink">{listings.length}</span>{" "}
-              {listings.length === 1 ? "listing" : "listings"}
-              {matchedCategory ? <> · {matchedCategory.name}</> : null}
+              {activeKeyword
+                ? listings.length === 1
+                  ? "match"
+                  : "matches"
+                : listings.length === 1
+                  ? "listing"
+                  : "listings"}
+              {activeKeyword ? (
+                <>
+                  {" "}
+                  for{" "}
+                  <span className="font-semibold text-ink">
+                    &ldquo;{activeKeyword}&rdquo;
+                  </span>
+                </>
+              ) : null}
+              {matchedCategories.length === 1
+                ? ` · ${matchedCategories[0].name}`
+                : matchedCategories.length > 1
+                  ? ` · ${matchedCategories.length} categories`
+                  : null}
               {suburb ? <> · in {suburb}</> : null}
               {openOnly ? <> · open now</> : null}
             </p>
@@ -477,10 +468,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   body={
                     activeKeyword
                       ? `Nothing matches "${activeKeyword}"${
-                          matchedCategory ? ` in ${matchedCategory.name}` : ""
+                          matchedCategories.length === 1
+                            ? ` in ${matchedCategories[0].name}`
+                            : matchedCategories.length > 1
+                              ? " in the selected categories"
+                              : ""
                         }. Try fewer words or browse a different category.`
-                      : matchedCategory
-                        ? `No live listings in ${matchedCategory.name} yet. Try another category, or check back soon.`
+                      : matchedCategories.length
+                        ? `No live listings in ${
+                            matchedCategories.length === 1
+                              ? matchedCategories[0].name
+                              : "these categories"
+                          } yet. Try another category, or check back soon.`
                         : "We're onboarding our first sellers right now. Check back soon — or sign up as a provider to list yours."
                   }
                   title={activeKeyword ? "No matches" : "No live listings yet"}

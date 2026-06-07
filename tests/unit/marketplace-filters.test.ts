@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseCategoryList,
   sanitisePrice,
   sanitiseSort,
-  sanitiseSuburb
+  sanitiseSuburb,
+  serialiseCategoryList
 } from "@/lib/marketplace-filters";
 
 describe("sanitiseSort", () => {
   it("passes through known sort values", () => {
     expect(sanitiseSort("price_asc")).toBe("price_asc");
     expect(sanitiseSort("price_desc")).toBe("price_desc");
+    expect(sanitiseSort("oldest")).toBe("oldest");
   });
 
   it("defaults to newest for missing / unknown / unsafe input", () => {
@@ -52,5 +55,45 @@ describe("sanitiseSuburb", () => {
     expect(sanitiseSuburb("berea")).toBeNull(); // case-sensitive on purpose
     expect(sanitiseSuburb("")).toBeNull();
     expect(sanitiseSuburb(undefined)).toBeNull();
+  });
+});
+
+describe("parseCategoryList", () => {
+  it("returns an empty array for missing / empty input", () => {
+    expect(parseCategoryList(undefined)).toEqual([]);
+    expect(parseCategoryList("")).toEqual([]);
+    expect(parseCategoryList(",,,")).toEqual([]);
+  });
+
+  it("splits comma-separated names and trims whitespace", () => {
+    expect(parseCategoryList("Food, Beauty,Clothing ")).toEqual([
+      "Food",
+      "Beauty",
+      "Clothing"
+    ]);
+  });
+
+  it("de-duplicates case-insensitively, preserving first occurrence", () => {
+    expect(parseCategoryList("Food,Beauty,food,FOOD")).toEqual([
+      "Food",
+      "Beauty"
+    ]);
+  });
+});
+
+describe("serialiseCategoryList", () => {
+  it("returns null for an empty list so the URL param drops out", () => {
+    expect(serialiseCategoryList([])).toBeNull();
+  });
+
+  it("joins entries with commas in order", () => {
+    expect(serialiseCategoryList(["Food", "Beauty"])).toBe("Food,Beauty");
+  });
+
+  it("round-trips with parseCategoryList", () => {
+    const list = ["Food", "Beauty", "Pre-loved"];
+    const serialised = serialiseCategoryList(list);
+    expect(serialised).not.toBeNull();
+    expect(parseCategoryList(serialised ?? undefined)).toEqual(list);
   });
 });

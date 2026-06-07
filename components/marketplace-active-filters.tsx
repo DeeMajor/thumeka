@@ -5,11 +5,16 @@ import { X } from "lucide-react";
 import { useTransition } from "react";
 
 import { formatMoney } from "@/lib/format";
+import {
+  parseCategoryList,
+  serialiseCategoryList
+} from "@/lib/marketplace-filters";
 
 type ActiveFilter = {
   /** URL param key (`category`, `suburb`, etc.) used to remove this
    *  filter when the chip is dismissed. For `min_price` / `max_price`
-   *  the chip removes both at once. */
+   *  the chip removes both at once. Category chips remove one entry from
+   *  the comma-separated list rather than the whole param. */
   param:
     | "category"
     | "q"
@@ -20,6 +25,8 @@ type ActiveFilter = {
     | "min_price"
     | "max_price";
   label: string;
+  /** Set for `category` chips so removeChip knows which one to drop. */
+  value?: string;
 };
 
 type MarketplaceActiveFiltersProps = {
@@ -46,8 +53,14 @@ export function MarketplaceActiveFilters({
   const chips: ActiveFilter[] = [];
   const q = searchParams.get("q")?.trim();
   if (q) chips.push({ param: "q", label: `“${q}”` });
-  const category = searchParams.get("category");
-  if (category) chips.push({ param: "category", label: category });
+  // One chip per selected category — buyers can multi-select and dismiss
+  // them individually.
+  const activeCategories = parseCategoryList(
+    searchParams.get("category") ?? ""
+  );
+  for (const name of activeCategories) {
+    chips.push({ param: "category", label: name, value: name });
+  }
   const sort = searchParams.get("sort");
   if (sort && sort !== "newest") {
     chips.push({
@@ -57,7 +70,9 @@ export function MarketplaceActiveFilters({
           ? "Price: low to high"
           : sort === "price_desc"
             ? "Price: high to low"
-            : sort
+            : sort === "oldest"
+              ? "Oldest first"
+              : sort
     });
   }
   const minPrice = searchParams.get("min_price");
@@ -80,6 +95,14 @@ export function MarketplaceActiveFilters({
     if (filter.param === "price") {
       params.delete("min_price");
       params.delete("max_price");
+    } else if (filter.param === "category" && filter.value) {
+      // Drop only this one category; keep the rest of the multi-select.
+      const next = activeCategories.filter(
+        (name) => name.toLowerCase() !== filter.value!.toLowerCase()
+      );
+      const serialised = serialiseCategoryList(next);
+      if (serialised) params.set("category", serialised);
+      else params.delete("category");
     } else {
       params.delete(filter.param);
     }
@@ -111,8 +134,16 @@ export function MarketplaceActiveFilters({
       {chips.map((chip) => (
         <button
           className="inline-flex items-center gap-1.5 rounded-full border border-leaf/30 bg-mint px-3 py-1 text-caption font-semibold text-leaf transition hover:bg-leaf hover:text-white"
-          data-testid={`active-filter-${chip.param}`}
-          key={`${chip.param}-${chip.label}`}
+          data-testid={
+            chip.param === "category"
+              ? `active-filter-category-${chip.value}`
+              : `active-filter-${chip.param}`
+          }
+          key={
+            chip.param === "category"
+              ? `category-${chip.value}`
+              : `${chip.param}-${chip.label}`
+          }
           onClick={() => removeChip(chip)}
           type="button"
         >

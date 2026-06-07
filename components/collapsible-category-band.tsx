@@ -7,7 +7,8 @@ import { CategoryTileGrid } from "@/components/category-tile-grid";
 
 type CollapsibleCategoryBandProps = {
   categories: string[];
-  activeCategory: string | undefined;
+  /** Multi-select — zero or more active category names. */
+  activeCategories: string[];
   layout: "mobile" | "desktop";
   /** Optional id so the button + region get matching aria controls. */
   id?: string;
@@ -23,13 +24,13 @@ type CollapsibleCategoryBandProps = {
  */
 export function CollapsibleCategoryBand({
   categories,
-  activeCategory,
+  activeCategories,
   layout,
   id
 }: CollapsibleCategoryBandProps) {
-  // If a category is already selected via URL, expand by default so the
-  // chosen tile is visible. Otherwise stay collapsed.
-  const [expanded, setExpanded] = useState(() => Boolean(activeCategory));
+  // If any categories are already selected via URL, expand by default so
+  // the chosen tiles are visible. Otherwise stay collapsed.
+  const [expanded, setExpanded] = useState(() => activeCategories.length > 0);
   const regionId = id ?? `categories-${layout}`;
 
   const wrapperCls =
@@ -59,7 +60,7 @@ export function CollapsibleCategoryBand({
       {expanded ? (
         <div className="mt-3" id={regionId}>
           <CategoryTileGrid
-            activeCategory={activeCategory}
+            activeCategories={activeCategories}
             categories={categories}
             layout={layout}
           />
