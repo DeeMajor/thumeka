@@ -327,18 +327,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 as they type. */}
             {!activeKeyword ? (
               <>
-                {/* Desktop category rail — single-row horizontal
-                    scroll, always visible. The sidebar still lists every
-                    category in column form for power users. */}
-                <Suspense fallback={null}>
-                  <div className="mb-5 hidden sm:block">
-                    <CategoryTileGrid
-                      activeCategories={activeCategories}
-                      categories={categoryNames}
-                      layout="desktop"
-                    />
-                  </div>
-                </Suspense>
+                {/* Desktop has the sidebar for category navigation, so
+                    no in-pane rail here — mobile gets the scroll rail
+                    in its own section above. */}
 
                 {/* Desktop sticky filter strip + mobile filter trigger.
                     The mobile strip stays inline as a single button; the
