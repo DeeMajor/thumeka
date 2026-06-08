@@ -395,9 +395,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     Number.isFinite(responseRate) && responseRate < 95;
                   return (
                   <Link
-                    className={`rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4 ${
-                      isOpen ? "ring-2 ring-leaf/30" : "opacity-80"
-                    }`}
+                    className="rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4"
                     data-listing-open={isOpen}
                     data-testid="listing-card"
                     href={`/listings/${listing.id}`}
@@ -406,9 +404,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <div className="relative mb-2 sm:mb-4">
                       <ListingImage
                         alt={listing.title}
-                        className={`relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3] ${
-                          isOpen ? "" : "opacity-70"
-                        }`}
+                        className="relative aspect-square overflow-hidden rounded-md sm:aspect-[4/3]"
                         storagePath={listing.image_url}
                       />
                       {/* OPEN / Closed pill, top-left of the image. Visible
