@@ -160,6 +160,78 @@ export function validateZaBranchCode(
 }
 
 // ---------------------------------------------------------------------------
+// Email addresses
+// ---------------------------------------------------------------------------
+
+/**
+ * Disposable / placeholder domains we never want to send to. Catches the
+ * common "test signup" patterns that drive Supabase bounce rates.
+ *
+ * Kept as a frozen Set for O(1) lookup. Extend as patterns show up in
+ * the Resend dashboard — a code edit until the list grows past ~20.
+ */
+const EMAIL_BLOCKLIST: ReadonlySet<string> = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "test.com",
+  "localhost",
+  "mailinator.com",
+  "tempmail.com",
+  "10minutemail.com",
+  "guerrillamail.com",
+  "throwaway.email"
+]);
+
+/**
+ * Conservative email validator. Trims + lowercases the input, requires a
+ * sensible shape (local@domain.tld with a 2+ char TLD), and rejects a
+ * static list of disposable / placeholder domains so the auth flow
+ * stops queuing emails to addresses that bounce.
+ *
+ * Accepted:
+ *   "andile@thumeka.co.za" → "andile@thumeka.co.za"
+ *   " ANDILE@gmail.COM "   → "andile@gmail.com"
+ *
+ * Rejected:
+ *   "not-an-email" — missing @ + TLD
+ *   "a@b"          — TLD too short
+ *   "x@example.com" — blocklisted domain
+ *   ""             — empty
+ */
+export function validateEmail(
+  input: string | null | undefined
+): ValidationResult<string> {
+  if (!input || typeof input !== "string") {
+    return { ok: false, error: "Email is required." };
+  }
+  const cleaned = input.trim().toLowerCase();
+  if (!cleaned) {
+    return { ok: false, error: "Email is required." };
+  }
+  // Single @, no whitespace in local or domain, 2+ char TLD.
+  const match = cleaned.match(/^([^\s@]+)@([^\s@]+\.[a-z]{2,})$/);
+  if (!match) {
+    return {
+      ok: false,
+      error: "That doesn't look like a valid email. Please check and try again."
+    };
+  }
+  const [, local, domain] = match;
+  // RFC 5321 caps the local part at 64 chars.
+  if (local.length > 64) {
+    return { ok: false, error: "Email is too long." };
+  }
+  if (EMAIL_BLOCKLIST.has(domain)) {
+    return {
+      ok: false,
+      error: "Please use a real email address you can receive mail at."
+    };
+  }
+  return { ok: true, value: cleaned };
+}
+
+// ---------------------------------------------------------------------------
 // Helper: pick the value or bounce out
 // ---------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   validateAndNormalizeZaPhone,
+  validateEmail,
   validateZaBankAccountNumber,
   validateZaBranchCode,
   valueOrThrow
@@ -137,5 +138,54 @@ describe("valueOrThrow", () => {
 
   it("throws ValidationError with the message when not ok", () => {
     expect(() => valueOrThrow({ ok: false, error: "nope" })).toThrow("nope");
+  });
+});
+
+describe("validateEmail", () => {
+  it("accepts and normalises typical addresses", () => {
+    const r = validateEmail("andile@thumeka.co.za");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toBe("andile@thumeka.co.za");
+  });
+
+  it("trims whitespace and lowercases the input", () => {
+    const r = validateEmail("  ANDILE@Gmail.COM  ");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toBe("andile@gmail.com");
+  });
+
+  it.each([
+    "not-an-email",
+    "a@b", // TLD too short
+    "andile@", // missing domain
+    "@gmail.com", // missing local part
+    "andile@gmail", // missing TLD
+    "andile @gmail.com", // whitespace inside
+    ""
+  ])("rejects %s", (input) => {
+    const r = validateEmail(input);
+    expect(r.ok).toBe(false);
+  });
+
+  it.each([
+    "x@example.com",
+    "x@example.org",
+    "x@test.com",
+    "x@mailinator.com",
+    "x@10minutemail.com"
+  ])("rejects placeholder / disposable domain %s", (input) => {
+    const r = validateEmail(input);
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects null and undefined input", () => {
+    expect(validateEmail(null).ok).toBe(false);
+    expect(validateEmail(undefined).ok).toBe(false);
+  });
+
+  it("rejects a local part longer than 64 chars (RFC 5321)", () => {
+    const local = "a".repeat(65);
+    const r = validateEmail(`${local}@gmail.com`);
+    expect(r.ok).toBe(false);
   });
 });

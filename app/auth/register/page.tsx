@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 
 import { registerAction } from "@/app/auth/actions";
+import { EmailInput } from "@/components/email-input";
 import { PasswordInput } from "@/components/password-input";
 import { PrivacyModalTrigger } from "@/components/privacy-modal";
 import { TermsModalTrigger } from "@/components/terms-modal";
@@ -61,14 +62,11 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           </div>
           <label className="block space-y-1">
             <span className="label">Email</span>
-            <input
+            <EmailInput
               autoComplete="email"
-              className="input"
               data-testid="register-email-input"
-              inputMode="email"
               name="email"
               required
-              type="email"
             />
           </label>
           <label className="block space-y-1">

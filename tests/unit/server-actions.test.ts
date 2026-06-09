@@ -155,7 +155,7 @@ function mockCheckoutClient(options: {
   const profileQuery = makeQueryChain(
     options.providerUserProfile !== undefined
       ? options.providerUserProfile
-      : { email: "provider@example.com", full_name: "Test Provider" }
+      : { email: "provider@thumeka-test.dev", full_name: "Test Provider" }
   );
 
   const orderInsert = vi.fn(() => ({
@@ -203,7 +203,7 @@ describe("server action flow coverage", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://thumeka.test";
     mocks.requireRole.mockResolvedValue({
       profile: {
-        email: "buyer@example.com",
+        email: "buyer@thumeka-test.dev",
         full_name: "Buyer Test",
         id: "buyer-profile",
         phone: "0712345678",
@@ -221,7 +221,7 @@ describe("server action flow coverage", () => {
   });
 
   it("validates registration before calling Supabase", async () => {
-    await expect(registerAction(form({ email: "buyer@example.com" }))).rejects.toThrow(
+    await expect(registerAction(form({ email: "buyer@thumeka-test.dev" }))).rejects.toThrow(
       "NEXT_REDIRECT:/auth/register?error=Full%20name%2C%20email%20and%20password%20are%20required"
     );
 
@@ -232,13 +232,13 @@ describe("server action flow coverage", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/auth/register?error=Use%20the%20admin%20invite%20flow");
 
     await expect(
-      registerAction(form({ email: "buyer@example.com", full_name: "Buyer", password: "short" }))
+      registerAction(form({ email: "buyer@thumeka-test.dev", full_name: "Buyer", password: "short" }))
     ).rejects.toThrow("NEXT_REDIRECT:/auth/register?error=Password%20must%20be%20at%20least%208%20characters");
 
     await expect(
       registerAction(
         form({
-          email: "buyer@example.com",
+          email: "buyer@thumeka-test.dev",
           full_name: "Buyer",
           password: "password1",
           confirm_password: "password2"
@@ -259,7 +259,7 @@ describe("server action flow coverage", () => {
     await expect(
       registerAction(
         form({
-          email: " DRIVER@Example.COM ",
+          email: " DRIVER@thumeka-test.dev ",
           full_name: " Driver Test ",
           password: "password1",
           confirm_password: "password1",
@@ -271,7 +271,7 @@ describe("server action flow coverage", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/auth/sign-in?registered=1");
 
     expect(client.auth.signUp).toHaveBeenCalledWith({
-      email: "driver@example.com",
+      email: "driver@thumeka-test.dev",
       password: "password1",
       options: {
         emailRedirectTo: "https://thumeka.test/auth/callback",
@@ -298,7 +298,7 @@ describe("server action flow coverage", () => {
     await expect(
       registerAction(
         form({
-          email: "provider@example.com",
+          email: "provider@thumeka-test.dev",
           full_name: "Provider",
           password: "password1",
           confirm_password: "password1",
@@ -323,7 +323,7 @@ describe("server action flow coverage", () => {
     await expect(
       registerAction(
         form({
-          email: "buyer@example.com",
+          email: "buyer@thumeka-test.dev",
           full_name: "Buyer",
           password: "password1",
           confirm_password: "password1",
@@ -339,7 +339,7 @@ describe("server action flow coverage", () => {
     });
 
     await expect(
-      signInAction(form({ email: "buyer@example.com", password: "password1" }))
+      signInAction(form({ email: "buyer@thumeka-test.dev", password: "password1" }))
     ).rejects.toThrow("NEXT_REDIRECT:/auth/sign-in?error=Invalid%20login");
   });
 
@@ -352,18 +352,18 @@ describe("server action flow coverage", () => {
     mocks.ensureProfile.mockResolvedValue({ id: "profile-buyer", role: "buyer" });
 
     await expect(
-      signInAction(form({ email: "buyer@example.com", next: "/checkout/listing-1", password: "password1" }))
+      signInAction(form({ email: "buyer@thumeka-test.dev", next: "/checkout/listing-1", password: "password1" }))
     ).rejects.toThrow("NEXT_REDIRECT:/checkout/listing-1");
 
     await expect(
-      signInAction(form({ email: "buyer@example.com", next: "//evil.example", password: "password1" }))
+      signInAction(form({ email: "buyer@thumeka-test.dev", next: "//evil.example", password: "password1" }))
     ).rejects.toThrow("NEXT_REDIRECT:/buyer/orders");
   });
 
   it("submits provider and driver applications, sends confirmation email", async () => {
     mocks.requireRole.mockResolvedValueOnce({
       userId: "provider-auth",
-      profile: { id: "provider-profile", role: "provider", email: "p@example.com", full_name: "Provider" }
+      profile: { id: "provider-profile", role: "provider", email: "p@thumeka-test.dev", full_name: "Provider" }
     });
     const providerClient = mockApplyClient("provider_profiles");
 
@@ -411,7 +411,7 @@ describe("server action flow coverage", () => {
     );
     expect(mocks.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "p@example.com",
+        to: "p@thumeka-test.dev",
         subject: "Provider application received — Thumeka"
       })
     );
@@ -419,7 +419,7 @@ describe("server action flow coverage", () => {
     vi.clearAllMocks();
     mocks.requireRole.mockResolvedValueOnce({
       userId: "driver-auth",
-      profile: { id: "driver-profile", role: "driver", email: "d@example.com", full_name: "Driver" }
+      profile: { id: "driver-profile", role: "driver", email: "d@thumeka-test.dev", full_name: "Driver" }
     });
     const driverClient = mockApplyClient("driver_profiles");
 
@@ -458,7 +458,7 @@ describe("server action flow coverage", () => {
     );
     expect(mocks.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "d@example.com",
+        to: "d@thumeka-test.dev",
         subject: "Driver application received — Thumeka"
       })
     );
@@ -660,7 +660,7 @@ describe("server action flow coverage", () => {
     // Provider should be notified of the new order request
     expect(mocks.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "provider@example.com",
+        to: "provider@thumeka-test.dev",
         subject: "New order request — Thumeka"
       })
     );

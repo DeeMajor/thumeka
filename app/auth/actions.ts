@@ -7,7 +7,7 @@ import { getAppUrl } from "@/lib/env";
 import { ensureProfile } from "@/lib/profile";
 import { roleHomePath } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { validateAndNormalizeZaPhone } from "@/lib/validators";
+import { validateAndNormalizeZaPhone, validateEmail } from "@/lib/validators";
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -29,15 +29,23 @@ function normalizePublicRole(value: string): PublicRole {
 export async function registerAction(formData: FormData) {
   const fullName = readString(formData, "full_name");
   const phone = readString(formData, "phone");
-  const email = readString(formData, "email").toLowerCase();
+  const rawEmail = readString(formData, "email");
   const password = readString(formData, "password");
   const confirmPassword = readString(formData, "confirm_password");
   const role = normalizePublicRole(readString(formData, "role"));
   const termsAccepted = readString(formData, "terms_accepted") === "1";
 
-  if (!fullName || !email || !password) {
+  if (!fullName || !rawEmail || !password) {
     redirect("/auth/register?error=Full%20name%2C%20email%20and%20password%20are%20required");
   }
+
+  // Tight server-side email validation — keeps obvious-typo / disposable
+  // addresses from reaching Supabase's signup flow and racking up bounces.
+  const emailResult = validateEmail(rawEmail);
+  if (!emailResult.ok) {
+    redirect(`/auth/register?error=${encodeError(emailResult.error)}`);
+  }
+  const email = emailResult.value;
 
   if (email === ADMIN_EMAIL) {
     redirect("/auth/register?error=Use%20the%20admin%20invite%20flow%20for%20this%20email");
