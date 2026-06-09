@@ -388,11 +388,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="mobile-grid mt-5">
                 {listings.map((listing) => {
                   const isOpen = listing.provider_is_open !== false;
-                  const responseRate = Number(
-                    listing.provider_response_rate_pct ?? 100
-                  );
-                  const showResponseRate =
-                    Number.isFinite(responseRate) && responseRate < 95;
                   return (
                   <Link
                     className="rounded-lg border border-black/10 bg-white p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-leaf sm:p-4"
@@ -456,14 +451,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     {listing.business_name ? (
                       <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-black/55 sm:mt-1 sm:text-caption">
                         {listing.business_name}
-                      </p>
-                    ) : null}
-                    {showResponseRate ? (
-                      <p
-                        className="mt-0.5 text-[10px] font-medium text-sunset sm:text-caption"
-                        data-testid={`listing-card-${listing.id.slice(0, 8)}-response-rate`}
-                      >
-                        Responds to {Math.round(responseRate)}% of orders
                       </p>
                     ) : null}
                     <p className="mt-2 hidden line-clamp-1 text-sm leading-6 text-black/60 sm:block">
